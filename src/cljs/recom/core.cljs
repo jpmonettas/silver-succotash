@@ -31,17 +31,6 @@
 (defn ^:export init []
   (dev-setup)
   (mount-root)
-
-  ;(def evSource (js/EventSource. "http://localhost:9094/disk-usage"))
-  ;(set! (.-onmessage evSource) (fn [ev]
-  ;                               ;(.log js/console (.-data ev))
-  ;                               (re-frame/dispatch [:disk (.-data ev)])
-  ;                               ))
-  ;(def connections (js/EventSource. "http://localhost:9094/sshd"))
-  ;(set! (.-onmessage connections) (fn [ev]
-  ;                               ;(.log js/console (.-data ev))
-  ;                               (re-frame/dispatch [:connections (.-data ev)])
-  ;                               ))
   (def users (js/EventSource. "http://localhost:9094/users"))
   (set! (.-onmessage users) (fn [ev]
                                     (re-frame/dispatch [:users (.-data ev)])

@@ -21,8 +21,6 @@
     (aset dummy "download" filename)
     (.appendChild (.-body js/document) dummy)
     (.click dummy)
-    (.execCommand js/document "copy" dummy)
-    ;(.log js/console (str "copied: " text))
     (.removeChild (.-body js/document) dummy)
     )
   )

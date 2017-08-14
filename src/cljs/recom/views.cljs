@@ -230,21 +230,6 @@
     )
   ))
 
-
-
-;(defn ui []
-;  (fn []
-;    [re-com/v-box
-;     :height "100%"
-;     :children [
-;                [re-table]
-;                [:div {:id "snackbar"}]
-;                ]
-;     ]
-;    )
-;  )
-
-
 (defn ui []
   (fn []
     [re-com/v-box
