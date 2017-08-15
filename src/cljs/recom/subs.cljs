@@ -5,11 +5,6 @@
 (re-frame/reg-sub
   :users
   (fn [db _]
-    (.log js/console "users_sub")
+    ;(.log js/console "users_sub")
     (:users db)
-    ))
-(re-frame/reg-sub
-  :pubkey
-  (fn [db _]
-    (:pubkey db)
     ))

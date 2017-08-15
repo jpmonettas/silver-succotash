@@ -3,29 +3,11 @@
             [clojure.walk :as walk]
             [ajax.core :as ajax]))
 
-(re-frame/reg-event-db
-  :disk
-  (fn  [db [_ disk-usage]]
-    (.log js/console "disk_event")
-    (assoc db :disk-usage disk-usage)
-    ))
-(re-frame/reg-event-db
-  :pubkey
-  (fn  [db [_ disk-usage]]
-    (.log js/console "pubkey")
-    (assoc db :pubkey disk-usage)
-    ))
-(re-frame/reg-event-db
-  :connections
-  (fn  [db [_ conns]]
-    (.log js/console "connections_event")
-    (assoc db :connections conns)
-    ))
 
 (re-frame/reg-event-db
   :users
   (fn  [db [_ users]]
-    (.log js/console "users_event")
+    (.log js/console "user data received")
     (assoc db :users (walk/keywordize-keys (js->clj (.parse js/JSON users))))
     ))
 
