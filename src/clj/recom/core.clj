@@ -12,6 +12,7 @@
 (def canales (atom {"/users" []
                     ;"/resources" []
                     }))
+;; TODO: add add a timestamp to the atom so the client knows if something is missing
 (def users (atom {}))
 
 
@@ -38,7 +39,11 @@
                                          {:status 200
                                           :headers {"Content-type" "text/event-stream"
                                                     "Access-Control-Allow-Origin" "*"}}
-                                         false))
+                                         false)
+                           (server/send! channel
+                                         (str "data:" (json/json-str (mydiff {} @users)) "\n\n")
+                                         false)
+                           )
       (if (=(:uri req) "/private_key")
         {:status 405}
         (if (=(:uri req) "/users/private_key")
@@ -107,6 +112,7 @@
     ))
 ;; TODO: use transit instead of json??
 ;; TODO: use a smart diff function and send! each N if theres changes or each M (M>N)
+;; TODO: each M we send a full "frame" to let missing clients resync
 (defn mydiff [old new]
   (let [diff  (data/diff old new)]
     (if (or (first diff) (second diff))
@@ -145,21 +151,6 @@
 ;transit
 
 
-;(defn row [n]
-;  [:tbody [:tr [:td (n "user")] [:td (n "key")] [:td {:class "text-center"} [:span {:class "glyphicon glyphicon-download-alt text-muted"}]]]]
-;  )
-
-;(defn create-table []
-;  [:div
-;   {:class "container-fluid"}
-;   [:table
-;    {:class "table table-bordered table-responsive"}
-;    [:thead [:tr [:th "id"] [:th "Username"] [:th "Port"] [:th "Status"] [:th "Private"] [:th "PubKey"]]]
-;    [(map (fn [n]
-;            (row n)
-;            ) test)]
-;    ]]
-;  )
 (def old-db
   (set '(
           {:user "bh247_mypbifsm", :pubkey nil, :privkey false, :port "2345"}
@@ -199,7 +190,24 @@
     :port ""})))
 
 
-;(mydiff old-db new-db)
+(mydiff old-db new-db)
+(set/join old-db new-db)
+
+(def dif {:remove #{{:user "bh247_cxuxnbaj", :pubkey nil, :privkey false, :port ""}
+                    {:user "bh247_mypbifsm", :pubkey nil, :privkey false, :port "2345"}},
+          :add #{{:user "bh247_mypbifsm", :pubkey nil, :privkey false, :port "q23"}}}
+  )
+(def data {:users old-db})
+(set (:add dif))
+(set/union
+  (set/difference (:users data) (:remove dif))
+  (:add dif)
+  )
+
+(disj (:users data) {:user "bh247_cxuxnbaj", :pubkey nil, :privkey false, :port ""})
+(assoc db :users (set/union (:users db) add))
+(assoc data :users old-db )
+data
 ;(mydiff old-db old-db)
 ;{:remove (first (data/diff old-db new-db))
 ; :add (second (data/diff old-db new-db))}

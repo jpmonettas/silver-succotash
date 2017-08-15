@@ -1,14 +1,23 @@
 (ns recom.events
   (:require [re-frame.core :as re-frame]
             [clojure.walk :as walk]
-            [ajax.core :as ajax]))
+            [ajax.core :as ajax]
+            [clojure.set :as set]))
 
 
 (re-frame/reg-event-db
   :users
   (fn  [db [_ users]]
-    (.log js/console "user data received")
-    (assoc db :users (walk/keywordize-keys (js->clj (.parse js/JSON users))))
+    (let [data (walk/keywordize-keys (js->clj (.parse js/JSON users)))
+          add (:add data)
+          remove (:remove data)]
+      (.log js/console users)
+      ;(assoc db :users (set/union (:users db) add))
+      (assoc db :users (set/union
+        (set/difference (:users db) remove)
+        add
+        ))
+      )
     ))
 
 (re-frame/reg-event-fx
