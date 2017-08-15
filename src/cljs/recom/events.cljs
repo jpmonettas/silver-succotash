@@ -9,8 +9,8 @@
   :users
   (fn  [db [_ users]]
     (let [data (walk/keywordize-keys (js->clj (.parse js/JSON users)))
-          add (:add data)
-          remove (:remove data)]
+          add (remove nil? (:add data))
+          remove (remove nil? (:remove data))]
       (.log js/console users)
       ;(assoc db :users (set/union (:users db) add))
       (assoc db :users (set/union
