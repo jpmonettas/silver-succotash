@@ -11,10 +11,11 @@
     (let [data (walk/keywordize-keys (js->clj (.parse js/JSON users)))
           add (remove nil? (:add data))
           remove (remove nil? (:remove data))]
-      (.log js/console users)
+      (.log js/console remove)
+      (.log js/console add)
       ;(assoc db :users (set/union (:users db) add))
       (assoc db :users (set/union
-        (set/difference (:users db) remove)
+        (set/difference (set (:users db)) remove)
         add
         ))
       )
@@ -69,14 +70,15 @@
 ;; TODO: on error notify somehow, on success do nothing as the screen will be automagically refreshed by EventSource
 (re-frame/reg-event-fx                             ;; note the trailing -fx
   :delete-user                      ;; usage:  (dispatch [:handler-with-http])
-  (fn [{:keys [db]} _]                    ;; the first param will be "world"
+  (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
     {:db   (assoc db :show-twirly true)   ;; causes the twirly-waiting-dialog to show??
      :http-xhrio {:method          :post
                   :uri             "http://localhost:9094/users/delete"
+                  :params {:username username}
                   :timeout         8000
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
-                  :on-success      [:http-result]
+                  :on-success      [:toast {:text "deleted" :duration 3000}]
                   :on-failure      [:toast {:text "Error Deleting User" :duration 3000}]
                   }}))
 
