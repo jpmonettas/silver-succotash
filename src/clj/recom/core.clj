@@ -29,17 +29,17 @@
 
 
 
+(defn delete-user [username]
+  (clojure.java.shell/sh "bash" "-c"
+                         (str "sudo userdel -f " username))
+  )
 
 
-(defn delete-user [user]
-  ; run userdel
-  ; delete .ssh/authorized_key (or better /home/$user )
-  ; delete private key if still present
-  {:user user})
+
 ;; TODO: on first contact we send base and then publish only differences
 (defn handler [req]
   (let [jeyson (if (:body req) (walk/keywordize-keys (json/read-str (slurp (:body req)))))]
-    (println jeyson)
+    ;(println jeyson)
     (if (contains? @canales (:uri req))
       (server/with-channel req channel
                            (swap! canales (fn [m]
@@ -131,13 +131,20 @@
   (let [usrs (users-data)
         diff (mydiff (set @users) (set usrs))]
     ;; compare usrs with atom and send/save if different
-    (reset! users usrs)
-    (doall (map (fn[ch]
-                  (server/send! ch
-                                (str "data:" (json/json-str diff) "\n\n")
-                                false))
-                (@canales "/users"))
-           ))
+    (if
+      (nil? diff)
+      nil
+      (do
+        (reset! users usrs)
+        (doall (map (fn[ch]
+                      (server/send! ch
+                                    (str "data:" (json/json-str diff) "\n\n")
+                                    false))
+                    (@canales "/users"))
+               ))
+      )
+
+    )
   )
 @users
 ;(reset! users {})
@@ -208,10 +215,9 @@ old-db
 ;
 ;
 
-(clojure.java.shell/sh "bash" "-c"
-                       (str "sudo userdel -f bh247_tmgxnbwy"))
 
-(mydiff (set old-db) (set new-db))
+(nil? (mydiff (set old-db) (set new-db)))
+(nil? (mydiff (set old-db) (set old-db)))
 ;(set/join old-db new-db)
 ;
 ;(def dif {:remove #{{:user "bh247_cxuxnbaj", :pubkey nil, :privkey false, :port ""}
