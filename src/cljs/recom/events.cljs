@@ -81,7 +81,20 @@
                   :on-success      [:toast {:text "deleted" :duration 3000}]
                   :on-failure      [:toast {:text "Error Deleting User" :duration 3000}]
                   }}))
-
+;; TODO: baseurl as config param
+(re-frame/reg-event-fx                             ;; note the trailing -fx
+  :send-command                      ;; usage:  (dispatch [:handler-with-http])
+  (fn [{:keys [db]} [_ req]]                    ;; the first param will be "world"
+    {:db   (assoc db :show-twirly true)   ;; causes the twirly-waiting-dialog to show??
+     :http-xhrio {:method          :post
+                  :uri             (str "http://localhost:9094/" (:endpoint req))
+                  :params (:params req)
+                  :timeout         8000
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
+                  :on-success      [:toast {:text "Created" :duration 3000}]
+                  :on-failure      [:toast {:text "Error Deleting User" :duration 3000}]
+                  }}))
 
 (re-frame/reg-event-db
   :http-result

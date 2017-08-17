@@ -111,7 +111,10 @@
    :height "300px"
    :width "120px"
    :children [
-              [re-com/button :class "btn btn-default btn-block" :label "create user"]
+              [re-com/button
+               :class     "btn btn-default btn-block"
+               :on-click  #(re-frame/dispatch [:send-command {:endpoint "users/create"}])
+               :label     "create user"]
               [re-com/button :class "btn btn-default btn-block" :label "create bulk"]
               [re-com/button :class "btn btn-default btn-block" :label "delete selected"]
               [re-com/button :class "btn btn-default btn-block" :label "import"]

@@ -33,8 +33,81 @@
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo userdel -f " username))
   )
+(defn create-user []
+
+  (clojure.java.shell/sh "bash" "-c"
+                         (str "scripts/create_user.sh"))
+  )
+(clojure.java.shell/sh "bash" "-c"
+                       (str "./scripts/create_user.sh"))
+
+(defn user-exists [user]
+  (=(:exit (clojure.java.shell/sh "bash" "-c"
+                                  (str "getent passwd " user " > /dev/null"))) 0)
+  )
+(defn rand-string
+  ([] (rand-string 8))
+  ([n]
+   (let [chars-between #(map char (range (int %1) (inc (int %2))))
+         chars (concat
+                 ;(chars-between \0 \9)
+                       (chars-between \a \z)
+                       ;(chars-between \A \Z)
+                       ;[\_]
+                       )
+         password (take n (repeatedly #(rand-nth chars)))]
+     (reduce str password)
+     )
+    ))
+
+;(user-exists "bh247_qxblzaez")
+;(user-exists "bh247_muyhfkny")
+;(rand-string)
+(defn new-username []
+  (let [uname (str "bh247_" (rand-string))]
+    (if
+      (user-exists uname)
+      (new-username)
+      uname))
+  )
+;(slurp "last_port")
+;(spit "last_port" "2250")
+
+;(grab-a-port)
+(new-username)
+(defn new-key-pair [username]
+  (if (= (:exit (clojure.java.shell/sh "bash" "-c"
+                         (str "ssh-keygen -t rsa -f /home/bhdev/private_keys/"
+                              username
+                              " -q -N ''")
+                         )) 0)
+    (:out (clojure.java.shell/sh "bash" "-c"
+                         (str "cat /home/bhdev/private_keys/" username ".pub | cut -d ' ' -f 2"))))
+  )
+(new-key-pair (new-username))
+
+(defn add-user [user]
+  (clojure.java.shell/sh "bash" "-c"
+                         (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
+
+  )
+(clojure.java.shell/sh "bash" "-c" (str "\"mkdir /home/bh247_ukqtlica/.ssh\"" " bh247_ukqtlica"))
 
 
+(add-user "bh247_ukqtlica")
+(delete-user "bh247_ukqtlica")
+(=(:exit (clojure.java.shell/sh "bash" "-c"
+                                (str "sudo adduser --disabled-password --gecos \"\"" user " > /dev/null"))) 0)
+;sudo adduser --disabled-password --gecos "" $U
+;#create authorized_keys
+;sudo -H -u $U bash -c 'cd ~;mkdir .ssh;chmod 700 .ssh;touch .ssh/authorized_keys;chmod 600 .ssh/authorized_keys'
+;    # add key/port (from args if passed or generate it)
+;ENTRY="no-pty,no-X11-forwarding,permitopen=\"localhost:${PORT}\",command=\"/bin/echo do-not-send-commands\" ssh-rsa ${PUBKEY}"
+;destdir="/home/${U}/.ssh/authorized_keys"
+;echo "$ENTRY"|sudo tee "$destdir"
+
+;$(ssh-keygen -t rsa -f /home/bhdev/private_keys/$U -q -N '')
+;             PUBKEY=$(cat /home/bhdev/private_keys/$U.pub | cut -d " " -f 2)
 
 ;; TODO: on first contact we send base and then publish only differences
 (defn handler [req]
@@ -69,7 +142,13 @@
                        "Access-Control-Allow-Origin" "*"
                        "Access-Control-Allow-Headers" "Content-Type"}
              :body (json/write-str{:success (delete-user (:username jeyson))})}
-            {:status 404})
+            (if (=(:uri req) "/users/create")
+              {:status 200
+               :headers {"Content-type" "application/json"
+                         "Access-Control-Allow-Origin" "*"
+                         "Access-Control-Allow-Headers" "Content-Type"}
+               :body (json/write-str{:success (create-user)})}
+              {:status 404}))
           )
         )
       )
@@ -85,7 +164,7 @@
     (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "awk -F':' '{ print $1}' /etc/passwd")))
     )
   )
-
+;; TODO: fix a nullpointer if polling before creation of authorized_keys
 (defn port [user]
   (str/replace
   (second
@@ -164,60 +243,60 @@
 
 
 
-(def new-db
-  '({:user "bh247_yziymgrm",
-    :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFZST0Ii2PY3jRgE45A9HLBZCvAPdqVav+F9IPVQpymwi4+YsDts8jcAUzN/5btEUUQx42whCeBxOCJg23rb2sxSpM4PBePh9O0Iw2q+mKQZ3J5RrUzNLAGQhDXg3Dyx9rcSIA7+34/n4oPczEC9t7KzOIUkFnoglhHcPDuGxPMrgwvwx7GYMcRpUphRRp54ian+dubiOw0gg3OnrS4mJcfoJFW0f/CuvUbDk+fETYIJUv5/b1d9kMz95RPnbityT8Sd7iWymvX+o7lkuX8JxxpFs2Z78OsfifKMMrevsPXZ1CLLMfbcutJbMYZtFXLALV7WKw6rD2FPz9xoQGU3LN",
-    :privkey false,
-    :port "2228"}
-    {:user "bh247_oyuljuis",
-     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQCySof7Gx0wCcaZ3EIz/zWtFlvQTxFDZq6V5I/ZSbLUsCHRBNwttBWYDT/bMCvujUuYBSxObejBvlR9wNLxqhpGjZBIuJXltjqq6wrZ49Il7UKBbNOazoRKS/YXiuU6i9DqfUZlMv0+eIANtL4IBz1aHYEy+cPBgmfGjsTYbWniYg9Yr7aONWCZJuv5R9kRDLUmB920xdarBuRQIM9huvfgWXhVtDbJT0fya9SjTLwz5ClWVvzejb52WqYZRFfjdxTdyy1sBQGWNpyTkGuu+yJq6S3NvxZKAJdyS7Q/vVCBOqtvePKXV2jrp+pl0STxArFnYC5fedLL2WDROIWpOJp1",
-     :privkey true,
-     :port ""}
-    {:user "bh247_viizuyvm",
-     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC7dRto96AYxqr9GDtcbv+IWPz+xd6DW5IRPlTFBPWnKEqN31Kn4hba9d4fABvoCNi+ssI8ybzK8Gk4T1v06AdguglyAMGqfLDj7PAxsxK1mi8DfNsqG6F4jWPxMjfZrjJVRV6II3xelOD3JZd3AEsUGSE3M02jGcSJ4XQGD0qa6qZcpYnKiSS/IqyI+s9Rfj4F5s3PkZMhSAbn2r0kivd3C0saWoDwS2iX29Z4eK9oFVZbOAZdU/10UnEFGy/3JVMFQDw/OfzW8OI5WXx0/Iwur+jxcl5K9KbBnWKoru6YrBW+pT+CT5hrUqhweng0yYojHwaz89gRpq1B4MpfkmaF",
-     :privkey true,
-     :port ""}
-    {:user "bh247_fcgwsbbc",
-     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDJju1zUSru14aD6B2TNQYS0mr1nop14fz4nKJS63VdfEG1QtDPlRWfyxDx6p8h3rOVbDd/hZoovU/y2PDVRKxz/MQDGbRiwG7DI9+ynNAsX+dH6KGC2Y4sG+7OxylMZtDCrOFpoml3hKjjAgmE6Y6ch1TswJ/JaxeEQ4zyWG4j4ii5lxANI45F6x0Ou0sj60xCfGEoDvMgfOFVWpSISyYrUeYaMiaLM+28IXLrIY4qjqe+jFGJQytskw6OhGopk4/oJE9w7xT2CuEw7ThtKZpiOHNfm3iqSQeRcZ8I+NwbbKqzNlogOYiPF3aKtlCYw80cz8aWp3ayBEFkjR+ANTez",
-     :privkey true,
-     :port ""}
-    {:user "bh247_mpodogcb",
-     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC+h2tayHrQVVoKXcaeYXLg5mONxP+FlZ2aSSN7Hbu9Q6GfR4x8ICRon+k3Ueja5f77Xa5FfwPzW27JF0HYltGfAarlOxjObihgtwHB/vsN3DjIHfZCGoLv1Nsbpj1Ax+SX2PmDP3jbx3Gc2v+P/N6u0BGKZbZF0DzQmb3RAMrwHamRFl8iCUddH/OLQteknAC0y3new45N//7I7anBTz1Bc1/ehFNwNdziMv87jxsQRtpYv1TtcLMrOroAkeEE2LQTO6WM98P/Ip1imJlh9vk/Um3FuycEZlacgr2cR007S4ACwpRyt3vgsHGpLkjlli4koPNpeQbt+FbYsdgK1iPr",
-     :privkey true,
-     :port "2232"})
-  )
-
-(def old-db '({:user "bh247_yziymgrm",
-  :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFZST0Ii2PY3jRgE45A9HLBZCvAPdqVav+F9IPVQpymwi4+YsDts8jcAUzN/5btEUUQx42whCeBxOCJg23rb2sxSpM4PBePh9O0Iw2q+mKQZ3J5RrUzNLAGQhDXg3Dyx9rcSIA7+34/n4oPczEC9t7KzOIUkFnoglhHcPDuGxPMrgwvwx7GYMcRpUphRRp54ian+dubiOw0gg3OnrS4mJcfoJFW0f/CuvUbDk+fETYIJUv5/b1d9kMz95RPnbityT8Sd7iWymvX+o7lkuX8JxxpFs2Z78OsfifKMMrevsPXZ1CLLMfbcutJbMYZtFXLALV7WKw6rD2FPz9xoQGU3LN",
-  :privkey false,
-  :port "2228"}
-  {:user "bh247_nszckpbx",
-   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDMXFToYByHQ56IrkrRx7m/0hYCX8JMSn98HInsL/Gffgk35gw6eqZ+YFxkpG1GsMEQZMqe9mfUdQYg7RjgKIa7eaozJwzStovYJFceQhJ73h8ptsHsP6BzQN+gir8PqtMNRwvObL36XyHUC/6twJj5hiINqJVHrhkXBTYPaUVnqWuZLb8e0GU1VKcovdhuNU+CJnccB8rwHf+DGCfpRjC6SK5QPfQs57/OeIvXKM+7e4Pw99YyHeM9GELg5hXYMlPcC4DYi13hR+suuXsBFWuXCF/CMWj83MdGWcD+J6gUL5xqxlf41h0pFRLJx//HVQSzM5nygRm0ZPSVT2+mTMQD",
-   :privkey true,
-   :port ""}
-  {:user "bh247_oyuljuis",
-   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQCySof7Gx0wCcaZ3EIz/zWtFlvQTxFDZq6V5I/ZSbLUsCHRBNwttBWYDT/bMCvujUuYBSxObejBvlR9wNLxqhpGjZBIuJXltjqq6wrZ49Il7UKBbNOazoRKS/YXiuU6i9DqfUZlMv0+eIANtL4IBz1aHYEy+cPBgmfGjsTYbWniYg9Yr7aONWCZJuv5R9kRDLUmB920xdarBuRQIM9huvfgWXhVtDbJT0fya9SjTLwz5ClWVvzejb52WqYZRFfjdxTdyy1sBQGWNpyTkGuu+yJq6S3NvxZKAJdyS7Q/vVCBOqtvePKXV2jrp+pl0STxArFnYC5fedLL2WDROIWpOJp1",
-   :privkey true,
-   :port ""}
-  {:user "bh247_viizuyvm",
-   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC7dRto96AYxqr9GDtcbv+IWPz+xd6DW5IRPlTFBPWnKEqN31Kn4hba9d4fABvoCNi+ssI8ybzK8Gk4T1v06AdguglyAMGqfLDj7PAxsxK1mi8DfNsqG6F4jWPxMjfZrjJVRV6II3xelOD3JZd3AEsUGSE3M02jGcSJ4XQGD0qa6qZcpYnKiSS/IqyI+s9Rfj4F5s3PkZMhSAbn2r0kivd3C0saWoDwS2iX29Z4eK9oFVZbOAZdU/10UnEFGy/3JVMFQDw/OfzW8OI5WXx0/Iwur+jxcl5K9KbBnWKoru6YrBW+pT+CT5hrUqhweng0yYojHwaz89gRpq1B4MpfkmaF",
-   :privkey true,
-   :port ""}
-  {:user "bh247_fcgwsbbc",
-   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDJju1zUSru14aD6B2TNQYS0mr1nop14fz4nKJS63VdfEG1QtDPlRWfyxDx6p8h3rOVbDd/hZoovU/y2PDVRKxz/MQDGbRiwG7DI9+ynNAsX+dH6KGC2Y4sG+7OxylMZtDCrOFpoml3hKjjAgmE6Y6ch1TswJ/JaxeEQ4zyWG4j4ii5lxANI45F6x0Ou0sj60xCfGEoDvMgfOFVWpSISyYrUeYaMiaLM+28IXLrIY4qjqe+jFGJQytskw6OhGopk4/oJE9w7xT2CuEw7ThtKZpiOHNfm3iqSQeRcZ8I+NwbbKqzNlogOYiPF3aKtlCYw80cz8aWp3ayBEFkjR+ANTez",
-   :privkey true,
-   :port ""}
-  {:user "bh247_mpodogcb",
-   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC+h2tayHrQVVoKXcaeYXLg5mONxP+FlZ2aSSN7Hbu9Q6GfR4x8ICRon+k3Ueja5f77Xa5FfwPzW27JF0HYltGfAarlOxjObihgtwHB/vsN3DjIHfZCGoLv1Nsbpj1Ax+SX2PmDP3jbx3Gc2v+P/N6u0BGKZbZF0DzQmb3RAMrwHamRFl8iCUddH/OLQteknAC0y3new45N//7I7anBTz1Bc1/ehFNwNdziMv87jxsQRtpYv1TtcLMrOroAkeEE2LQTO6WM98P/Ip1imJlh9vk/Um3FuycEZlacgr2cR007S4ACwpRyt3vgsHGpLkjlli4koPNpeQbt+FbYsdgK1iPr",
-   :privkey true,
-   :port "2232"}))
-old-db
+;(def new-db
+;  '({:user "bh247_yziymgrm",
+;    :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFZST0Ii2PY3jRgE45A9HLBZCvAPdqVav+F9IPVQpymwi4+YsDts8jcAUzN/5btEUUQx42whCeBxOCJg23rb2sxSpM4PBePh9O0Iw2q+mKQZ3J5RrUzNLAGQhDXg3Dyx9rcSIA7+34/n4oPczEC9t7KzOIUkFnoglhHcPDuGxPMrgwvwx7GYMcRpUphRRp54ian+dubiOw0gg3OnrS4mJcfoJFW0f/CuvUbDk+fETYIJUv5/b1d9kMz95RPnbityT8Sd7iWymvX+o7lkuX8JxxpFs2Z78OsfifKMMrevsPXZ1CLLMfbcutJbMYZtFXLALV7WKw6rD2FPz9xoQGU3LN",
+;    :privkey false,
+;    :port "2228"}
+;    {:user "bh247_oyuljuis",
+;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQCySof7Gx0wCcaZ3EIz/zWtFlvQTxFDZq6V5I/ZSbLUsCHRBNwttBWYDT/bMCvujUuYBSxObejBvlR9wNLxqhpGjZBIuJXltjqq6wrZ49Il7UKBbNOazoRKS/YXiuU6i9DqfUZlMv0+eIANtL4IBz1aHYEy+cPBgmfGjsTYbWniYg9Yr7aONWCZJuv5R9kRDLUmB920xdarBuRQIM9huvfgWXhVtDbJT0fya9SjTLwz5ClWVvzejb52WqYZRFfjdxTdyy1sBQGWNpyTkGuu+yJq6S3NvxZKAJdyS7Q/vVCBOqtvePKXV2jrp+pl0STxArFnYC5fedLL2WDROIWpOJp1",
+;     :privkey true,
+;     :port ""}
+;    {:user "bh247_viizuyvm",
+;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC7dRto96AYxqr9GDtcbv+IWPz+xd6DW5IRPlTFBPWnKEqN31Kn4hba9d4fABvoCNi+ssI8ybzK8Gk4T1v06AdguglyAMGqfLDj7PAxsxK1mi8DfNsqG6F4jWPxMjfZrjJVRV6II3xelOD3JZd3AEsUGSE3M02jGcSJ4XQGD0qa6qZcpYnKiSS/IqyI+s9Rfj4F5s3PkZMhSAbn2r0kivd3C0saWoDwS2iX29Z4eK9oFVZbOAZdU/10UnEFGy/3JVMFQDw/OfzW8OI5WXx0/Iwur+jxcl5K9KbBnWKoru6YrBW+pT+CT5hrUqhweng0yYojHwaz89gRpq1B4MpfkmaF",
+;     :privkey true,
+;     :port ""}
+;    {:user "bh247_fcgwsbbc",
+;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDJju1zUSru14aD6B2TNQYS0mr1nop14fz4nKJS63VdfEG1QtDPlRWfyxDx6p8h3rOVbDd/hZoovU/y2PDVRKxz/MQDGbRiwG7DI9+ynNAsX+dH6KGC2Y4sG+7OxylMZtDCrOFpoml3hKjjAgmE6Y6ch1TswJ/JaxeEQ4zyWG4j4ii5lxANI45F6x0Ou0sj60xCfGEoDvMgfOFVWpSISyYrUeYaMiaLM+28IXLrIY4qjqe+jFGJQytskw6OhGopk4/oJE9w7xT2CuEw7ThtKZpiOHNfm3iqSQeRcZ8I+NwbbKqzNlogOYiPF3aKtlCYw80cz8aWp3ayBEFkjR+ANTez",
+;     :privkey true,
+;     :port ""}
+;    {:user "bh247_mpodogcb",
+;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC+h2tayHrQVVoKXcaeYXLg5mONxP+FlZ2aSSN7Hbu9Q6GfR4x8ICRon+k3Ueja5f77Xa5FfwPzW27JF0HYltGfAarlOxjObihgtwHB/vsN3DjIHfZCGoLv1Nsbpj1Ax+SX2PmDP3jbx3Gc2v+P/N6u0BGKZbZF0DzQmb3RAMrwHamRFl8iCUddH/OLQteknAC0y3new45N//7I7anBTz1Bc1/ehFNwNdziMv87jxsQRtpYv1TtcLMrOroAkeEE2LQTO6WM98P/Ip1imJlh9vk/Um3FuycEZlacgr2cR007S4ACwpRyt3vgsHGpLkjlli4koPNpeQbt+FbYsdgK1iPr",
+;     :privkey true,
+;     :port "2232"})
+;  )
+;
+;(def old-db '({:user "bh247_yziymgrm",
+;  :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFZST0Ii2PY3jRgE45A9HLBZCvAPdqVav+F9IPVQpymwi4+YsDts8jcAUzN/5btEUUQx42whCeBxOCJg23rb2sxSpM4PBePh9O0Iw2q+mKQZ3J5RrUzNLAGQhDXg3Dyx9rcSIA7+34/n4oPczEC9t7KzOIUkFnoglhHcPDuGxPMrgwvwx7GYMcRpUphRRp54ian+dubiOw0gg3OnrS4mJcfoJFW0f/CuvUbDk+fETYIJUv5/b1d9kMz95RPnbityT8Sd7iWymvX+o7lkuX8JxxpFs2Z78OsfifKMMrevsPXZ1CLLMfbcutJbMYZtFXLALV7WKw6rD2FPz9xoQGU3LN",
+;  :privkey false,
+;  :port "2228"}
+;  {:user "bh247_nszckpbx",
+;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDMXFToYByHQ56IrkrRx7m/0hYCX8JMSn98HInsL/Gffgk35gw6eqZ+YFxkpG1GsMEQZMqe9mfUdQYg7RjgKIa7eaozJwzStovYJFceQhJ73h8ptsHsP6BzQN+gir8PqtMNRwvObL36XyHUC/6twJj5hiINqJVHrhkXBTYPaUVnqWuZLb8e0GU1VKcovdhuNU+CJnccB8rwHf+DGCfpRjC6SK5QPfQs57/OeIvXKM+7e4Pw99YyHeM9GELg5hXYMlPcC4DYi13hR+suuXsBFWuXCF/CMWj83MdGWcD+J6gUL5xqxlf41h0pFRLJx//HVQSzM5nygRm0ZPSVT2+mTMQD",
+;   :privkey true,
+;   :port ""}
+;  {:user "bh247_oyuljuis",
+;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQCySof7Gx0wCcaZ3EIz/zWtFlvQTxFDZq6V5I/ZSbLUsCHRBNwttBWYDT/bMCvujUuYBSxObejBvlR9wNLxqhpGjZBIuJXltjqq6wrZ49Il7UKBbNOazoRKS/YXiuU6i9DqfUZlMv0+eIANtL4IBz1aHYEy+cPBgmfGjsTYbWniYg9Yr7aONWCZJuv5R9kRDLUmB920xdarBuRQIM9huvfgWXhVtDbJT0fya9SjTLwz5ClWVvzejb52WqYZRFfjdxTdyy1sBQGWNpyTkGuu+yJq6S3NvxZKAJdyS7Q/vVCBOqtvePKXV2jrp+pl0STxArFnYC5fedLL2WDROIWpOJp1",
+;   :privkey true,
+;   :port ""}
+;  {:user "bh247_viizuyvm",
+;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC7dRto96AYxqr9GDtcbv+IWPz+xd6DW5IRPlTFBPWnKEqN31Kn4hba9d4fABvoCNi+ssI8ybzK8Gk4T1v06AdguglyAMGqfLDj7PAxsxK1mi8DfNsqG6F4jWPxMjfZrjJVRV6II3xelOD3JZd3AEsUGSE3M02jGcSJ4XQGD0qa6qZcpYnKiSS/IqyI+s9Rfj4F5s3PkZMhSAbn2r0kivd3C0saWoDwS2iX29Z4eK9oFVZbOAZdU/10UnEFGy/3JVMFQDw/OfzW8OI5WXx0/Iwur+jxcl5K9KbBnWKoru6YrBW+pT+CT5hrUqhweng0yYojHwaz89gRpq1B4MpfkmaF",
+;   :privkey true,
+;   :port ""}
+;  {:user "bh247_fcgwsbbc",
+;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDJju1zUSru14aD6B2TNQYS0mr1nop14fz4nKJS63VdfEG1QtDPlRWfyxDx6p8h3rOVbDd/hZoovU/y2PDVRKxz/MQDGbRiwG7DI9+ynNAsX+dH6KGC2Y4sG+7OxylMZtDCrOFpoml3hKjjAgmE6Y6ch1TswJ/JaxeEQ4zyWG4j4ii5lxANI45F6x0Ou0sj60xCfGEoDvMgfOFVWpSISyYrUeYaMiaLM+28IXLrIY4qjqe+jFGJQytskw6OhGopk4/oJE9w7xT2CuEw7ThtKZpiOHNfm3iqSQeRcZ8I+NwbbKqzNlogOYiPF3aKtlCYw80cz8aWp3ayBEFkjR+ANTez",
+;   :privkey true,
+;   :port ""}
+;  {:user "bh247_mpodogcb",
+;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC+h2tayHrQVVoKXcaeYXLg5mONxP+FlZ2aSSN7Hbu9Q6GfR4x8ICRon+k3Ueja5f77Xa5FfwPzW27JF0HYltGfAarlOxjObihgtwHB/vsN3DjIHfZCGoLv1Nsbpj1Ax+SX2PmDP3jbx3Gc2v+P/N6u0BGKZbZF0DzQmb3RAMrwHamRFl8iCUddH/OLQteknAC0y3new45N//7I7anBTz1Bc1/ehFNwNdziMv87jxsQRtpYv1TtcLMrOroAkeEE2LQTO6WM98P/Ip1imJlh9vk/Um3FuycEZlacgr2cR007S4ACwpRyt3vgsHGpLkjlli4koPNpeQbt+FbYsdgK1iPr",
+;   :privkey true,
+;   :port "2232"}))
+;old-db
 ;
 ;
 
-
-(nil? (mydiff (set old-db) (set new-db)))
-(nil? (mydiff (set old-db) (set old-db)))
+;
+;(nil? (mydiff (set old-db) (set new-db)))
+;(nil? (mydiff (set old-db) (set old-db)))
 ;(set/join old-db new-db)
 ;
 ;(def dif {:remove #{{:user "bh247_cxuxnbaj", :pubkey nil, :privkey false, :port ""}

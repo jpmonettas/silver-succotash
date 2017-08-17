@@ -27,6 +27,7 @@
     (set! (.-onmessage ev-source) on-message)
     (set! (.-onerror ev-source) on-error)
     ev-source))
+;; TODO: baseurl as config param
 
 (defn ^:export init []
   (dev-setup)
