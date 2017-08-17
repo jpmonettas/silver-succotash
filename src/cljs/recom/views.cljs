@@ -2,113 +2,6 @@
   (:require [re-frame.core :as re-frame]
             [re-com.core :as re-com  :refer-macros [handler-fn]]
             [reagent.core :as reagent]))
-(def click-count (reagent/atom 0))
-(defn title []
-  (let [rx (re-frame/subscribe [:pubkey])]
-    (fn []
-      [re-com/p @rx ])))
-
-(defn sshd []
-  (let [conns (re-frame/subscribe [:connections])]
-    (fn []
-      [re-com/p @conns])))
-
-
-;(defn modal []
-;  [:div
-;   {:id "myModal" :class "modal fade" :role "dialog"}
-;   [:div
-;    {:class "modal-dialog"}
-;    [:div
-;     {:class "modal-content"}
-;     [:div
-;      {:class "modal-header"}
-;      [:h4 {:class "modal-title"}] "modal header"
-;      [:input
-;       {:value \u00D7
-;        :type "button"
-;        :class "close"
-;        :data-dismiss "modal"
-;        }
-;       ]
-;      ]
-;     [:div
-;      {:class "modal-body"}
-;      [:p "Some text for the body"]
-;      ]
-;     [:div
-;      {:class "modal-footer"}
-;      [:button
-;       {:type "button"
-;        :class "btn btn-danger"
-;        :data-dismiss "modal"
-;        :on-click #(swap! click-count dec)
-;        }
-;       "Cancel "
-;       [:span {:class "glyphicon glyphicon-remove"}]]
-;      [:button
-;       {:type "button"
-;        :class "btn btn-success"
-;        :data-dismiss "modal"
-;        :on-click #(swap! click-count inc)}
-;       "OK "
-;       [:span {:class "glyphicon glyphicon-ok"}]]
-;      ]
-;     ]
-;    ]
-;   ])
-
-
-(defn public_key []
-  (let [key (re-frame/subscribe [:pubkey])]
-    [:div
-   {:id "myModal" :class "modal" :role "dialog"}
-   [:div
-    {:class "modal-dialog"}
-    [:div
-     {:class "modal-content"}
-     [:div
-      {:class "modal-header"}
-      [:h4 {:class "modal-title"}] "public"
-      [:input
-       {:value \u00D7
-        :type "button"
-        :class "close"
-        :data-dismiss "modal"
-        }
-       ]
-      ]
-     [:div
-      {:class "modal-body"}
-      [:p {:class "container"} @key]
-      ]
-     ]
-    ]
-   ]))
-
-(defn modal_open [title]
-  [:input {:type "button" :value title :class "btn btn-info btn-lg"
-           :data-toggle "modal" :data-target "#myModal"}])
-(defn show_public[n]
-  (re-frame/dispatch [:pubkey n])
-  )
-(defn row [i n]
-  (if (nil? n)
-    [:tr {:key i}
-     [:td ""]
-             [:td ""]
-             [:td {:class "text-center"} [:span {:class "glyphicon glyphicon-download-alt text-muted"}]]
-             [:td {:class "text-center"} [:span {:class "glyphicon glyphicon-search"}]]
-             ]
-    [:tr
-     {:key i}
-     [:td (:user n)]
-             [:td (:port n)]
-             [:td {:class "text-center"} [:a {:data-toggle "modal" :data-target "#myModal"} [:span {:class (str "glyphicon glyphicon-download-alt " (if (nil? (:pubkey n)) "text-muted"))}]]]
-             [:td {:class "text-center"} [:a {:data-toggle "modal" :data-target "#myModal" :on-click #(show_public (:pubkey n)) }[:span {:class "glyphicon glyphicon-search"}]]]
-             ]
-    ))
-;; glyphicon glyphicon-search
 
 (defn data-row
   [row i col-widths mouse-over click-msg]
@@ -170,13 +63,6 @@
                              ;:on-click #(re-frame/dispatch [:delete-user (:user row)])
                              ]]]
                 ]]))
-(defn enumerate
-  "(for [[index item first? last?] (enumerate coll)] ...)  "
-  [coll]
-  (let [c (dec (count coll))
-        f (fn [index item] [item])]
-    (map-indexed f coll)))
-
 
 (defn data-table
   [rows col-widths]
@@ -205,17 +91,7 @@
 
                   ]])))
 
-(defn create-table []
-  (let [u (re-frame/subscribe [:users])]
-    (fn []
-      [:div
-   {:class "container-fluid"}
-   [:table
-    {:class "table table-bordered table-responsive"}
-    [:thead [:tr [:th "Username"] [:th "Port"] [:th "Private"] [:th "PubKey"]]]
-    [:tbody (map-indexed row @u)]
-    ]]))
-  )
+
 ;(:users @re-frame.db/app-db.)
 ;; TODO: show forwarding status and allow to sort/filter
 (defn users-table []
@@ -230,6 +106,19 @@
     )
   ))
 
+(defn side-bar []
+  [re-com/v-box
+   :height "300px"
+   :width "120px"
+   :children [
+              [re-com/button :class "btn btn-default btn-block" :label "create user"]
+              [re-com/button :class "btn btn-default btn-block" :label "create bulk"]
+              [re-com/button :class "btn btn-default btn-block" :label "delete selected"]
+              [re-com/button :class "btn btn-default btn-block" :label "import"]
+              [re-com/button :class "btn btn-default btn-block" :label "export"]
+              ]
+   ]
+  )
 (defn ui []
   (fn []
     [re-com/v-box
@@ -239,14 +128,22 @@
                  :gap "20px"
                  :children [
                             [re-com/v-box
+                             :width "120px"
                              :height "100%"
-                             :children [
-                                        [:h1 "nav"]]
+                             :children [[re-com/v-box
+                                         :height "40px"
+                                         :children []
+                                         ]
+                                        [side-bar]
+                                        ]
                              ]
                             [re-com/v-box
                              :height "100%"
                              :children [
-                                        [:h1 "Forwarding:"]
+                                        [re-com/v-box
+                                        :height "40px"
+                                        :children []
+                                        ]
                                         [users-table]
                                         ]
                              ]
