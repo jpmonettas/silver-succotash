@@ -33,13 +33,8 @@
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo userdel -f " username))
   )
-(defn create-user []
 
-  (clojure.java.shell/sh "bash" "-c"
-                         (str "scripts/create_user.sh"))
-  )
-(clojure.java.shell/sh "bash" "-c"
-                       (str "./scripts/create_user.sh"))
+
 
 (defn user-exists [user]
   (=(:exit (clojure.java.shell/sh "bash" "-c"
@@ -70,11 +65,17 @@
       (new-username)
       uname))
   )
+
+(defn grab-a-port []
+  (let [port (Integer. (slurp "last_port"))]
+    (spit "last_port" (inc port))
+    port)
+  )
 ;(slurp "last_port")
 ;(spit "last_port" "2250")
 
-;(grab-a-port)
-(new-username)
+(grab-a-port)
+
 (defn new-key-pair [username]
   (if (= (:exit (clojure.java.shell/sh "bash" "-c"
                          (str "ssh-keygen -t rsa -f /home/bhdev/private_keys/"
@@ -84,30 +85,35 @@
     (:out (clojure.java.shell/sh "bash" "-c"
                          (str "cat /home/bhdev/private_keys/" username ".pub | cut -d ' ' -f 2"))))
   )
-(new-key-pair (new-username))
 
-(defn add-user [user]
+;; TODO: change permissions for .ssh and .ssh/authorized_keys to avoid being writable by the remote user
+;sudo -H -u $U bash -c 'cd ~;mkdir .ssh;chmod 700 .ssh;touch .ssh/authorized_keys;chmod 600 .ssh/authorized_keys'
+
+(defn add-user [user pubkey port]
+  (let [content (str "no-pty,no-X11-forwarding,permitopen=\"localhost:"
+                     port
+                     "\",command=\"/bin/echo do-not-send-commands\" ssh-rsa "
+                     pubkey)]
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
+  (clojure.java.shell/sh "bash" "-c" (str "sudo mkdir /home/" user "/.ssh"))
+  (clojure.java.shell/sh "bash" "-c" (str "sudo touch /home/" user "/.ssh/authorized_keys"))
+  (clojure.java.shell/sh "bash" "-c" (str "echo \""content "\"|sudo tee /home/" user "/.ssh/authorized_keys"))
+  ))
 
+(defn create-user []
+  (let [user (new-username)
+        pubkey (new-key-pair user)
+        port (grab-a-port)
+        ]
+    (add-user user pubkey port)
+    )
+  key
   )
-;(clojure.java.shell/sh "bash" "-c" (str "\"mkdir /home/bh247_ukqtlica/.ssh\"" " bh247_ukqtlica"))
-;
-;
-;(add-user "bh247_ukqtlica")
-;(delete-user "bh247_ukqtlica")
-;(=(:exit (clojure.java.shell/sh "bash" "-c"
-;                                (str "sudo adduser --disabled-password --gecos \"\"" user " > /dev/null"))) 0)
-;sudo adduser --disabled-password --gecos "" $U
-;#create authorized_keys
-;sudo -H -u $U bash -c 'cd ~;mkdir .ssh;chmod 700 .ssh;touch .ssh/authorized_keys;chmod 600 .ssh/authorized_keys'
-;    # add key/port (from args if passed or generate it)
-;ENTRY="no-pty,no-X11-forwarding,permitopen=\"localhost:${PORT}\",command=\"/bin/echo do-not-send-commands\" ssh-rsa ${PUBKEY}"
-;destdir="/home/${U}/.ssh/authorized_keys"
-;echo "$ENTRY"|sudo tee "$destdir"
+;(create-user)
+;(new-username)
+;(new-key-pair (new-username))
 
-;$(ssh-keygen -t rsa -f /home/bhdev/private_keys/$U -q -N '')
-;             PUBKEY=$(cat /home/bhdev/private_keys/$U.pub | cut -d " " -f 2)
 ;; TODO: use transit instead of json??
 ;; TODO: use a smart diff function and send! each N if theres changes or each M (M>N)
 ;; TODO: each M we send a full "frame" to let missing clients resync
