@@ -91,13 +91,13 @@
                          (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
 
   )
-(clojure.java.shell/sh "bash" "-c" (str "\"mkdir /home/bh247_ukqtlica/.ssh\"" " bh247_ukqtlica"))
-
-
-(add-user "bh247_ukqtlica")
-(delete-user "bh247_ukqtlica")
-(=(:exit (clojure.java.shell/sh "bash" "-c"
-                                (str "sudo adduser --disabled-password --gecos \"\"" user " > /dev/null"))) 0)
+;(clojure.java.shell/sh "bash" "-c" (str "\"mkdir /home/bh247_ukqtlica/.ssh\"" " bh247_ukqtlica"))
+;
+;
+;(add-user "bh247_ukqtlica")
+;(delete-user "bh247_ukqtlica")
+;(=(:exit (clojure.java.shell/sh "bash" "-c"
+;                                (str "sudo adduser --disabled-password --gecos \"\"" user " > /dev/null"))) 0)
 ;sudo adduser --disabled-password --gecos "" $U
 ;#create authorized_keys
 ;sudo -H -u $U bash -c 'cd ~;mkdir .ssh;chmod 700 .ssh;touch .ssh/authorized_keys;chmod 600 .ssh/authorized_keys'
@@ -108,7 +108,17 @@
 
 ;$(ssh-keygen -t rsa -f /home/bhdev/private_keys/$U -q -N '')
 ;             PUBKEY=$(cat /home/bhdev/private_keys/$U.pub | cut -d " " -f 2)
-
+;; TODO: use transit instead of json??
+;; TODO: use a smart diff function and send! each N if theres changes or each M (M>N)
+;; TODO: each M we send a full "frame" to let missing clients resync
+(defn mydiff [old new]
+  (let [diff  (data/diff old new)]
+    (if (or (first diff) (second diff))
+      {:remove (first diff)
+       :add (second diff)}
+      )
+    )
+  )
 ;; TODO: on first contact we send base and then publish only differences
 (defn handler [req]
   (let [jeyson (if (:body req) (walk/keywordize-keys (json/read-str (slurp (:body req)))))]
@@ -164,23 +174,25 @@
     (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "awk -F':' '{ print $1}' /etc/passwd")))
     )
   )
-;; TODO: fix a nullpointer if polling before creation of authorized_keys
+
 (defn port [user]
-  (str/replace
-  (second
-  (str/split
-    (first
-  (str/split
-  (second
-    (str/split (:out (clojure.java.shell/sh "bash" "-c"
-                                          (str "sudo cat /home/" user "/.ssh/authorized_keys")))
-               #"permitopen="))
-  #",command"))
-    #":"
-  ))
-  #"\""
-  ""
-  ))
+  (let [line (second (str/split (:out (clojure.java.shell/sh "bash" "-c" (str "sudo cat /home/" user "/.ssh/authorized_keys")))#"permitopen="))]
+    (if (not (nil? line))
+      (str/replace
+        (second
+          (str/split
+            (first
+              (str/split
+                    line
+                #",command"))
+            #":"
+            ))
+        #"\""
+        ""
+        )
+      )
+    )
+)
 
 
 (defn users-data []
@@ -194,17 +206,7 @@
       })
     (list-existing-users)
     )))
-;; TODO: use transit instead of json??
-;; TODO: use a smart diff function and send! each N if theres changes or each M (M>N)
-;; TODO: each M we send a full "frame" to let missing clients resync
-(defn mydiff [old new]
-  (let [diff  (data/diff old new)]
-    (if (or (first diff) (second diff))
-      {:remove (first diff)
-       :add (second diff)}
-      )
-    )
-  )
+
 
 (defn publish-users []
   (let [usrs (users-data)
