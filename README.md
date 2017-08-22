@@ -25,3 +25,14 @@ To compile clojurescript to javascript:
 lein clean
 lein cljsbuild once min
 ```
+## sudoers
+
+```
+bhdev ALL= NOPASSWD: /bin/cat
+bhdev ALL= NOPASSWD: /usr/bin/lsof
+bhdev ALL= NOPASSWD: /usr/sbin/userdel
+bhdev ALL= NOPASSWD: /usr/bin/tee
+bhdev ALL= NOPASSWD: /usr/sbin/adduser
+bhdev ALL= NOPASSWD: /bin/mkdir
+bhdev ALL= NOPASSWD: /usr/bin/touch
+```

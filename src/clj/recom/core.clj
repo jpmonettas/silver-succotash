@@ -173,7 +173,6 @@
   )
 
 
-
 (defn list-existing-users []
   (filter
     (fn [n] (str/starts-with? n "bh247_"))
@@ -250,82 +249,3 @@
 ;transit
 
 
-
-;(def new-db
-;  '({:user "bh247_yziymgrm",
-;    :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFZST0Ii2PY3jRgE45A9HLBZCvAPdqVav+F9IPVQpymwi4+YsDts8jcAUzN/5btEUUQx42whCeBxOCJg23rb2sxSpM4PBePh9O0Iw2q+mKQZ3J5RrUzNLAGQhDXg3Dyx9rcSIA7+34/n4oPczEC9t7KzOIUkFnoglhHcPDuGxPMrgwvwx7GYMcRpUphRRp54ian+dubiOw0gg3OnrS4mJcfoJFW0f/CuvUbDk+fETYIJUv5/b1d9kMz95RPnbityT8Sd7iWymvX+o7lkuX8JxxpFs2Z78OsfifKMMrevsPXZ1CLLMfbcutJbMYZtFXLALV7WKw6rD2FPz9xoQGU3LN",
-;    :privkey false,
-;    :port "2228"}
-;    {:user "bh247_oyuljuis",
-;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQCySof7Gx0wCcaZ3EIz/zWtFlvQTxFDZq6V5I/ZSbLUsCHRBNwttBWYDT/bMCvujUuYBSxObejBvlR9wNLxqhpGjZBIuJXltjqq6wrZ49Il7UKBbNOazoRKS/YXiuU6i9DqfUZlMv0+eIANtL4IBz1aHYEy+cPBgmfGjsTYbWniYg9Yr7aONWCZJuv5R9kRDLUmB920xdarBuRQIM9huvfgWXhVtDbJT0fya9SjTLwz5ClWVvzejb52WqYZRFfjdxTdyy1sBQGWNpyTkGuu+yJq6S3NvxZKAJdyS7Q/vVCBOqtvePKXV2jrp+pl0STxArFnYC5fedLL2WDROIWpOJp1",
-;     :privkey true,
-;     :port ""}
-;    {:user "bh247_viizuyvm",
-;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC7dRto96AYxqr9GDtcbv+IWPz+xd6DW5IRPlTFBPWnKEqN31Kn4hba9d4fABvoCNi+ssI8ybzK8Gk4T1v06AdguglyAMGqfLDj7PAxsxK1mi8DfNsqG6F4jWPxMjfZrjJVRV6II3xelOD3JZd3AEsUGSE3M02jGcSJ4XQGD0qa6qZcpYnKiSS/IqyI+s9Rfj4F5s3PkZMhSAbn2r0kivd3C0saWoDwS2iX29Z4eK9oFVZbOAZdU/10UnEFGy/3JVMFQDw/OfzW8OI5WXx0/Iwur+jxcl5K9KbBnWKoru6YrBW+pT+CT5hrUqhweng0yYojHwaz89gRpq1B4MpfkmaF",
-;     :privkey true,
-;     :port ""}
-;    {:user "bh247_fcgwsbbc",
-;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDJju1zUSru14aD6B2TNQYS0mr1nop14fz4nKJS63VdfEG1QtDPlRWfyxDx6p8h3rOVbDd/hZoovU/y2PDVRKxz/MQDGbRiwG7DI9+ynNAsX+dH6KGC2Y4sG+7OxylMZtDCrOFpoml3hKjjAgmE6Y6ch1TswJ/JaxeEQ4zyWG4j4ii5lxANI45F6x0Ou0sj60xCfGEoDvMgfOFVWpSISyYrUeYaMiaLM+28IXLrIY4qjqe+jFGJQytskw6OhGopk4/oJE9w7xT2CuEw7ThtKZpiOHNfm3iqSQeRcZ8I+NwbbKqzNlogOYiPF3aKtlCYw80cz8aWp3ayBEFkjR+ANTez",
-;     :privkey true,
-;     :port ""}
-;    {:user "bh247_mpodogcb",
-;     :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC+h2tayHrQVVoKXcaeYXLg5mONxP+FlZ2aSSN7Hbu9Q6GfR4x8ICRon+k3Ueja5f77Xa5FfwPzW27JF0HYltGfAarlOxjObihgtwHB/vsN3DjIHfZCGoLv1Nsbpj1Ax+SX2PmDP3jbx3Gc2v+P/N6u0BGKZbZF0DzQmb3RAMrwHamRFl8iCUddH/OLQteknAC0y3new45N//7I7anBTz1Bc1/ehFNwNdziMv87jxsQRtpYv1TtcLMrOroAkeEE2LQTO6WM98P/Ip1imJlh9vk/Um3FuycEZlacgr2cR007S4ACwpRyt3vgsHGpLkjlli4koPNpeQbt+FbYsdgK1iPr",
-;     :privkey true,
-;     :port "2232"})
-;  )
-;
-;(def old-db '({:user "bh247_yziymgrm",
-;  :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDFZST0Ii2PY3jRgE45A9HLBZCvAPdqVav+F9IPVQpymwi4+YsDts8jcAUzN/5btEUUQx42whCeBxOCJg23rb2sxSpM4PBePh9O0Iw2q+mKQZ3J5RrUzNLAGQhDXg3Dyx9rcSIA7+34/n4oPczEC9t7KzOIUkFnoglhHcPDuGxPMrgwvwx7GYMcRpUphRRp54ian+dubiOw0gg3OnrS4mJcfoJFW0f/CuvUbDk+fETYIJUv5/b1d9kMz95RPnbityT8Sd7iWymvX+o7lkuX8JxxpFs2Z78OsfifKMMrevsPXZ1CLLMfbcutJbMYZtFXLALV7WKw6rD2FPz9xoQGU3LN",
-;  :privkey false,
-;  :port "2228"}
-;  {:user "bh247_nszckpbx",
-;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDMXFToYByHQ56IrkrRx7m/0hYCX8JMSn98HInsL/Gffgk35gw6eqZ+YFxkpG1GsMEQZMqe9mfUdQYg7RjgKIa7eaozJwzStovYJFceQhJ73h8ptsHsP6BzQN+gir8PqtMNRwvObL36XyHUC/6twJj5hiINqJVHrhkXBTYPaUVnqWuZLb8e0GU1VKcovdhuNU+CJnccB8rwHf+DGCfpRjC6SK5QPfQs57/OeIvXKM+7e4Pw99YyHeM9GELg5hXYMlPcC4DYi13hR+suuXsBFWuXCF/CMWj83MdGWcD+J6gUL5xqxlf41h0pFRLJx//HVQSzM5nygRm0ZPSVT2+mTMQD",
-;   :privkey true,
-;   :port ""}
-;  {:user "bh247_oyuljuis",
-;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQCySof7Gx0wCcaZ3EIz/zWtFlvQTxFDZq6V5I/ZSbLUsCHRBNwttBWYDT/bMCvujUuYBSxObejBvlR9wNLxqhpGjZBIuJXltjqq6wrZ49Il7UKBbNOazoRKS/YXiuU6i9DqfUZlMv0+eIANtL4IBz1aHYEy+cPBgmfGjsTYbWniYg9Yr7aONWCZJuv5R9kRDLUmB920xdarBuRQIM9huvfgWXhVtDbJT0fya9SjTLwz5ClWVvzejb52WqYZRFfjdxTdyy1sBQGWNpyTkGuu+yJq6S3NvxZKAJdyS7Q/vVCBOqtvePKXV2jrp+pl0STxArFnYC5fedLL2WDROIWpOJp1",
-;   :privkey true,
-;   :port ""}
-;  {:user "bh247_viizuyvm",
-;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC7dRto96AYxqr9GDtcbv+IWPz+xd6DW5IRPlTFBPWnKEqN31Kn4hba9d4fABvoCNi+ssI8ybzK8Gk4T1v06AdguglyAMGqfLDj7PAxsxK1mi8DfNsqG6F4jWPxMjfZrjJVRV6II3xelOD3JZd3AEsUGSE3M02jGcSJ4XQGD0qa6qZcpYnKiSS/IqyI+s9Rfj4F5s3PkZMhSAbn2r0kivd3C0saWoDwS2iX29Z4eK9oFVZbOAZdU/10UnEFGy/3JVMFQDw/OfzW8OI5WXx0/Iwur+jxcl5K9KbBnWKoru6YrBW+pT+CT5hrUqhweng0yYojHwaz89gRpq1B4MpfkmaF",
-;   :privkey true,
-;   :port ""}
-;  {:user "bh247_fcgwsbbc",
-;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQDJju1zUSru14aD6B2TNQYS0mr1nop14fz4nKJS63VdfEG1QtDPlRWfyxDx6p8h3rOVbDd/hZoovU/y2PDVRKxz/MQDGbRiwG7DI9+ynNAsX+dH6KGC2Y4sG+7OxylMZtDCrOFpoml3hKjjAgmE6Y6ch1TswJ/JaxeEQ4zyWG4j4ii5lxANI45F6x0Ou0sj60xCfGEoDvMgfOFVWpSISyYrUeYaMiaLM+28IXLrIY4qjqe+jFGJQytskw6OhGopk4/oJE9w7xT2CuEw7ThtKZpiOHNfm3iqSQeRcZ8I+NwbbKqzNlogOYiPF3aKtlCYw80cz8aWp3ayBEFkjR+ANTez",
-;   :privkey true,
-;   :port ""}
-;  {:user "bh247_mpodogcb",
-;   :pubkey "AAAAB3NzaC1yc2EAAAADAQABAAABAQC+h2tayHrQVVoKXcaeYXLg5mONxP+FlZ2aSSN7Hbu9Q6GfR4x8ICRon+k3Ueja5f77Xa5FfwPzW27JF0HYltGfAarlOxjObihgtwHB/vsN3DjIHfZCGoLv1Nsbpj1Ax+SX2PmDP3jbx3Gc2v+P/N6u0BGKZbZF0DzQmb3RAMrwHamRFl8iCUddH/OLQteknAC0y3new45N//7I7anBTz1Bc1/ehFNwNdziMv87jxsQRtpYv1TtcLMrOroAkeEE2LQTO6WM98P/Ip1imJlh9vk/Um3FuycEZlacgr2cR007S4ACwpRyt3vgsHGpLkjlli4koPNpeQbt+FbYsdgK1iPr",
-;   :privkey true,
-;   :port "2232"}))
-;old-db
-;
-;
-
-;
-;(nil? (mydiff (set old-db) (set new-db)))
-;(nil? (mydiff (set old-db) (set old-db)))
-;(set/join old-db new-db)
-;
-;(def dif {:remove #{{:user "bh247_cxuxnbaj", :pubkey nil, :privkey false, :port ""}
-;                    {:user "bh247_mypbifsm", :pubkey nil, :privkey false, :port "2345"}},
-;          :add #{{:user "bh247_mypbifsm", :pubkey nil, :privkey false, :port "q23"}}}
-;  )
-;(def data {:users old-db})
-;(set (:add dif))
-;(set/union
-;  (set/difference (:users data) (:remove dif))
-;  (:add dif)
-;  )
-;
-;(disj (:users data) {:user "bh247_cxuxnbaj", :pubkey nil, :privkey false, :port ""})
-;(assoc db :users (set/union (:users db) add))
-;(assoc data :users old-db )
-;data
-;(mydiff old-db old-db)
-;{:remove (first (data/diff old-db new-db))
-; :add (second (data/diff old-db new-db))}
-;
-;
-;{:remove (first (data/diff new-db new-db))
-; :add (second (data/diff new-db new-db))}
