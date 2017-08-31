@@ -95,6 +95,7 @@
 
 ;(:users @re-frame.db/app-db.)
 ;; TODO: show forwarding status and allow to sort/filter
+;; TODO: add a link to copy to clipboard the connection one-liner with PORT USER and HOST_URL
 (defn users-table []
   "A table with recom"
   (let [col-widths  {:username "150px" :port "100px" :pubkey "200px" :privkey "80px" :actions "75px"}

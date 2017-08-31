@@ -17,7 +17,9 @@
 
 (defn download-text [filename content]
   (let [dummy (.createElement js/document "a")]
-    (aset dummy "href" (str "data:text/plain;charset=utf-8," content))
+    (aset dummy "href" (str "data:text/plain;charset=utf-8,"
+                            (js/encodeURIComponent content)
+                            ))
     (aset dummy "download" filename)
     (.appendChild (.-body js/document) dummy)
     (.click dummy)
