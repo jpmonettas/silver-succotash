@@ -17,6 +17,7 @@
     ;(utils/download-text "elninio" "soldado")
     ;(js/setTimeout #(utils/copy "timeout!!") (:timeout m))
     ))
+;; TODO: implement a notification/log box that accumulates responses and shows them for N mins
 (re-frame/reg-fx
   :toast
   (fn [m]

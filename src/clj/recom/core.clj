@@ -27,15 +27,24 @@
     )
   )
 
-
-
 (defn delete-user [username]
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo userdel -f " username))
   )
 
-
-
+(def not-nil? (complement nil?))
+(defn open-ports []
+  (map
+    (fn [n]
+      {:user  (nth n 2)
+       :port  (second (str/split (nth n 8) #":"))
+       })
+    (filter not-nil?
+            (map
+              (fn[n] (if-not (or (= (nth n 2) "root") (not= (nth n 9) "(LISTEN)") (not= (nth n 4) "IPv4")) n))
+              (filter (fn [n] (= (first n) "sshd")) (map (fn [n] (str/split n #"\s+")) (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n")))))
+              ))))
+(open-ports)
 (defn user-exists [user]
   (=(:exit (clojure.java.shell/sh "bash" "-c"
                                   (str "getent passwd " user " > /dev/null"))) 0)
@@ -55,9 +64,6 @@
      )
     ))
 
-;(user-exists "bh247_qxblzaez")
-;(user-exists "bh247_muyhfkny")
-;(rand-string)
 (defn new-username []
   (let [uname (str "bh247_" (rand-string))]
     (if
@@ -71,10 +77,6 @@
     (spit "last_port" (inc port))
     port)
   )
-;(slurp "last_port")
-;(spit "last_port" "2250")
-
-(grab-a-port)
 
 (defn new-key-pair [username]
   (if (= (:exit (clojure.java.shell/sh "bash" "-c"
@@ -107,12 +109,9 @@
         port (grab-a-port)
         ]
     (add-user user pubkey port)
+    user
     )
-  key
   )
-;(create-user)
-;(new-username)
-;(new-key-pair (new-username))
 
 ;; TODO: use transit instead of json??
 ;; TODO: use a smart diff function and send! each N if theres changes or each M (M>N)

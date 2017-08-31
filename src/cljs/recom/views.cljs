@@ -2,7 +2,7 @@
   (:require [re-frame.core :as re-frame]
             [re-com.core :as re-com  :refer-macros [handler-fn]]
             [reagent.core :as reagent]))
-
+;; TODO: add a selection checkbox
 (defn data-row
   [row i col-widths mouse-over click-msg]
   (let [mouse-over-row? (identical? @mouse-over row)]
@@ -63,7 +63,8 @@
                              ;:on-click #(re-frame/dispatch [:delete-user (:user row)])
                              ]]]
                 ]]))
-
+;; TODO: add a "select all" checkbox
+;; TODO: add "by column" sorting capability
 (defn data-table
   [rows col-widths]
   (let [mouse-over (reagent/atom nil)
@@ -122,6 +123,7 @@
               ]
    ]
   )
+;; TODO: add a search box
 (defn ui []
   (fn []
     [re-com/v-box

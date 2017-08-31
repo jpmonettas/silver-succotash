@@ -71,8 +71,7 @@
 (re-frame/reg-event-fx                             ;; note the trailing -fx
   :delete-user                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
-    {:db   (assoc db :show-twirly true)   ;; causes the twirly-waiting-dialog to show??
-     :http-xhrio {:method          :post
+    {:http-xhrio {:method          :post
                   :uri             "http://localhost:9094/users/delete"
                   :params {:username username}
                   :timeout         8000
@@ -82,18 +81,18 @@
                   :on-failure      [:toast {:text "Error Deleting User" :duration 3000}]
                   }}))
 ;; TODO: baseurl as config param
+;; TODO: get created user id from response
 (re-frame/reg-event-fx                             ;; note the trailing -fx
   :send-command                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ req]]                    ;; the first param will be "world"
-    {:db   (assoc db :show-twirly true)   ;; causes the twirly-waiting-dialog to show??
-     :http-xhrio {:method          :post
+    {:http-xhrio {:method          :post
                   :uri             (str "http://localhost:9094/" (:endpoint req))
                   :params (:params req)
                   :timeout         8000
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
-                  :on-success      [:toast {:text "Created" :duration 3000}]
-                  :on-failure      [:toast {:text "Error Deleting User" :duration 3000}]
+                  :on-success      [:toast {:text (str "Created user" ) :duration 3000}]
+                  :on-failure      [:toast {:text "Error Creating User" :duration 3000}]
                   }}))
 
 (re-frame/reg-event-db
