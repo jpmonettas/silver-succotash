@@ -92,16 +92,19 @@
 ;sudo -H -u $U bash -c 'cd ~;mkdir .ssh;chmod 700 .ssh;touch .ssh/authorized_keys;chmod 600 .ssh/authorized_keys'
 
 (defn add-user [user pubkey port]
-  (let [content (str "no-pty,no-X11-forwarding,permitopen=\"localhost:"
-                     port
-                     "\",command=\"/bin/echo do-not-send-commands\" ssh-rsa "
+  (let [content (str
+                  "no-pty,no-X11-forwarding,permitopen=\"localhost:"
+                  port
+                  "\",command=\"/bin/echo do-not-send-commands\""
+                  " ssh-rsa "
                      pubkey)]
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
   (clojure.java.shell/sh "bash" "-c" (str "sudo mkdir /home/" user "/.ssh"))
   (clojure.java.shell/sh "bash" "-c" (str "sudo touch /home/" user "/.ssh/authorized_keys"))
-  (clojure.java.shell/sh "bash" "-c" (str "echo \""content "\"|sudo tee /home/" user "/.ssh/authorized_keys"))
+  (clojure.java.shell/sh "bash" "-c" (str "sudo tee /home/" user "/.ssh/authorized_keys") :in content)
   ))
+
 
 (defn create-user []
   (let [user (new-username)
