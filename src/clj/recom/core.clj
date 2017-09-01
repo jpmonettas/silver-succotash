@@ -96,7 +96,7 @@
                   "no-pty,no-X11-forwarding,permitopen=\"localhost:"
                   port
                   "\",command=\"/bin/echo do-not-send-commands\""
-                  " ssh-rsa "
+                  ", ssh-rsa "
                      pubkey)]
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
