@@ -20,45 +20,62 @@
 (defn private_key [n]
   (let [pkey (:out (clojure.java.shell/sh "bash" "-c" (str "cat /home/bhdev/private_keys/" n)))]
     (if pkey
-       (clojure.java.shell/sh "bash" "-c" (str "rm /home/bhdev/private_keys/" n)))
+      (clojure.java.shell/sh "bash" "-c" (str "rm /home/bhdev/private_keys/" n)))
     {:user n
      :privkey   pkey
      }
     )
   )
-
+;; TODO: we should also delete /home/<user> folder
 (defn delete-user [username]
   (clojure.java.shell/sh "bash" "-c"
                          (str "sudo userdel -f " username))
   )
 
-(def not-nil? (complement nil?))
-(defn open-ports []
-  (map
-    (fn [n]
-      {:user  (nth n 2)
-       :port  (second (str/split (nth n 8) #":"))
-       })
-    (filter not-nil?
-            (map
-              (fn[n] (if-not (or (= (nth n 2) "root") (not= (nth n 9) "(LISTEN)") (not= (nth n 4) "IPv4")) n))
-              (filter (fn [n] (= (first n) "sshd")) (map (fn [n] (str/split n #"\s+")) (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n")))))
-              ))))
-;(open-ports)
+(defn line->port [[proc _ user _ proto _ _ _ full-port status]]
+  {:proc proc
+   :proto proto
+   :user user
+   :port (second (str/split full-port #":"))
+   :open? (= status "(LISTEN)")})
+
+(defn lines->ports [lsof-lines]
+  (->> lsof-lines
+       (map #(str/split % #"\s+"))
+       (map line->port)))
+
+(defn open-ssh-connections [connections]
+  (filter (fn [{:keys [proc proto user port open?]}]
+            (and (= proc "sshd")
+                 (not= user "root")
+                 (= proto "IPv4")
+                 open?))
+          connections))
+
+(-> (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n")
+    :out
+    str/split-lines
+    lines->ports
+    open-ssh-connections
+    )
+(open-ssh-connections (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n"))))
+
 (defn user-exists [user]
   (=(:exit (clojure.java.shell/sh "bash" "-c"
                                   (str "getent passwd " user " > /dev/null"))) 0)
   )
+;(str/split "apache2    1210           root    6u  IPv6     21748      0t0  TCP *:http-alt (LISTEN)" #"\s+")
+
 (defn rand-string
   ([] (rand-string 8))
   ([n]
    (let [chars-between #(map char (range (int %1) (inc (int %2))))
          chars (concat
                  ;(chars-between \0 \9)
-                       (chars-between \a \z)
-                       ;(chars-between \A \Z)
-                       ;[\_]
-                       )
+                 (chars-between \a \z)
+                 ;(chars-between \A \Z)
+                 ;[\_]
+                 )
          password (take n (repeatedly #(rand-nth chars)))]
      (reduce str password)
      )
@@ -80,12 +97,12 @@
 
 (defn new-key-pair [username]
   (if (= (:exit (clojure.java.shell/sh "bash" "-c"
-                         (str "ssh-keygen -t rsa -f /home/bhdev/private_keys/"
-                              username
-                              " -q -N ''")
-                         )) 0)
+                                       (str "ssh-keygen -t rsa -f /home/bhdev/private_keys/"
+                                            username
+                                            " -q -N ''")
+                                       )) 0)
     (:out (clojure.java.shell/sh "bash" "-c"
-                         (str "cat /home/bhdev/private_keys/" username ".pub | cut -d ' ' -f 2"))))
+                                 (str "cat /home/bhdev/private_keys/" username ".pub | cut -d ' ' -f 2"))))
   )
 
 ;; TODO: change permissions for .ssh and .ssh/authorized_keys to avoid being writable by the remote user
@@ -97,13 +114,13 @@
                   port
                   "\",command=\"/bin/echo do-not-send-commands\""
                   ", ssh-rsa "
-                     pubkey)]
-  (clojure.java.shell/sh "bash" "-c"
-                         (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
-  (clojure.java.shell/sh "bash" "-c" (str "sudo mkdir /home/" user "/.ssh"))
-  (clojure.java.shell/sh "bash" "-c" (str "sudo touch /home/" user "/.ssh/authorized_keys"))
-  (clojure.java.shell/sh "bash" "-c" (str "sudo tee /home/" user "/.ssh/authorized_keys") :in content)
-  ))
+                  pubkey)]
+    (clojure.java.shell/sh "bash" "-c"
+                           (str "sudo adduser --disabled-password --gecos '' '" user "'" ))
+    (clojure.java.shell/sh "bash" "-c" (str "sudo mkdir /home/" user "/.ssh"))
+    (clojure.java.shell/sh "bash" "-c" (str "sudo touch /home/" user "/.ssh/authorized_keys"))
+    (clojure.java.shell/sh "bash" "-c" (str "sudo tee /home/" user "/.ssh/authorized_keys") :in content)
+    ))
 
 
 (defn create-user []
@@ -194,7 +211,7 @@
           (str/split
             (first
               (str/split
-                    line
+                line
                 #",command"))
             #":"
             ))
@@ -203,20 +220,27 @@
         )
       )
     )
-)
+  )
 
-
+(def mapa {{:user "bh247_xcuhgzvr", :port "2291"}, {:user "bh247_tbcjsoln", :port "2292"}})
+mapa
+(open-ports)
+(contains? (open-ports) {:user "bh247_xcuhgzvr", :port "2291"})
 (defn users-data []
-  (doall (map
-    (fn [n]
-     {:user n
-      :pubkey   (second (str/split (:out (clojure.java.shell/sh "bash" "-c"
-                                                                (str "cat /home/bhdev/private_keys/" n ".pub"))) #"\s+"))
-      :privkey  (= (:exit (clojure.java.shell/sh "bash" "-c" (str "test -f /home/bhdev/private_keys/" n ))) 0)
-      :port   (port n)
-      })
-    (list-existing-users)
-    )))
+  (let [open (open-ports)]
+    (doall (map
+             (fn [n]
+               {:user n
+                :pubkey   (second (str/split (:out (clojure.java.shell/sh "bash" "-c"
+                                                                          (str "cat /home/bhdev/private_keys/" n ".pub"))) #"\s+"))
+                :privkey  (= (:exit (clojure.java.shell/sh "bash" "-c" (str "test -f /home/bhdev/private_keys/" n ))) 0)
+                :port   (port n)
+                :active
+                })
+             (list-existing-users)
+             ))
+    )
+  )
 
 
 (defn publish-users []
