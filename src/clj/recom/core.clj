@@ -44,7 +44,7 @@
               (fn[n] (if-not (or (= (nth n 2) "root") (not= (nth n 9) "(LISTEN)") (not= (nth n 4) "IPv4")) n))
               (filter (fn [n] (= (first n) "sshd")) (map (fn [n] (str/split n #"\s+")) (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n")))))
               ))))
-(open-ports)
+;(open-ports)
 (defn user-exists [user]
   (=(:exit (clojure.java.shell/sh "bash" "-c"
                                   (str "getent passwd " user " > /dev/null"))) 0)
@@ -128,9 +128,10 @@
     )
   )
 ;; TODO: on first contact we send base and then publish only differences
+;; TODO: be sure we have a POST so we dont execute on OPTIONS and then on POST
 (defn handler [req]
   (let [jeyson (if (:body req) (walk/keywordize-keys (json/read-str (slurp (:body req)))))]
-    ;(println jeyson)
+    ;;(println (= (:request-method req) :post))
     (if (contains? @canales (:uri req))
       (server/with-channel req channel
                            (swap! canales (fn [m]
@@ -165,7 +166,10 @@
                :headers {"Content-type" "application/json"
                          "Access-Control-Allow-Origin" "*"
                          "Access-Control-Allow-Headers" "Content-Type"}
-               :body (json/write-str{:success (create-user)})}
+               :body (if (= (:request-method req) :post)
+                       (json/write-str{:success (create-user)})
+                       {})
+               }
               {:status 404}))
           )
         )
