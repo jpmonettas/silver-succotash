@@ -36,3 +36,8 @@ bhdev ALL= NOPASSWD: /usr/sbin/adduser
 bhdev ALL= NOPASSWD: /bin/mkdir
 bhdev ALL= NOPASSWD: /usr/bin/touch
 ```
+
+## client side
+```
+ssh -fN -R 2291:localhost:80 -i /home/behome247/private/key bh247_xcuhgzvr@192.168.1.21 -vvv
+```
