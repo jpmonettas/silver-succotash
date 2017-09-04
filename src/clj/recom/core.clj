@@ -52,19 +52,27 @@
                  open?))
           connections))
 
-(-> (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n")
+(defn list-ssh-connections []
+  (-> (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n")
     :out
     str/split-lines
     lines->ports
     open-ssh-connections
-    )
-(open-ssh-connections (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n"))))
+    ))
+;(open-ssh-connections (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n"))))
+{:proc "sshd", :proto "IPv4", :user "bh247_xcuhgzvr", :port "2291", :open? true}
 
+(defn is-active-port [ssh-connections user port]
+  (contains? ssh-connections
+             {:proc "sshd", :proto "IPv4", :user user, :port port, :open? true})
+  )
+;(is-active-port (set (list-ssh-connections)) "bh247_xcuhgzvr" "2291")
+;(contains? (set (list-ssh-connections))
+;      {:proc "sshd", :proto "IPv4", :user "bh247_xcuhgzvr", :port "2291", :open? true})
 (defn user-exists [user]
   (=(:exit (clojure.java.shell/sh "bash" "-c"
                                   (str "getent passwd " user " > /dev/null"))) 0)
   )
-;(str/split "apache2    1210           root    6u  IPv6     21748      0t0  TCP *:http-alt (LISTEN)" #"\s+")
 
 (defn rand-string
   ([] (rand-string 8))
@@ -222,12 +230,9 @@
     )
   )
 
-(def mapa {{:user "bh247_xcuhgzvr", :port "2291"}, {:user "bh247_tbcjsoln", :port "2292"}})
-mapa
-(open-ports)
-(contains? (open-ports) {:user "bh247_xcuhgzvr", :port "2291"})
+
 (defn users-data []
-  (let [open (open-ports)]
+  (let [open (list-ssh-connections)]
     (doall (map
              (fn [n]
                {:user n
@@ -235,7 +240,7 @@ mapa
                                                                           (str "cat /home/bhdev/private_keys/" n ".pub"))) #"\s+"))
                 :privkey  (= (:exit (clojure.java.shell/sh "bash" "-c" (str "test -f /home/bhdev/private_keys/" n ))) 0)
                 :port   (port n)
-                :active
+                :active (is-active-port (set (list-ssh-connections)) n (port n))
                 })
              (list-existing-users)
              ))

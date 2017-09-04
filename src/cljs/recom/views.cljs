@@ -11,7 +11,10 @@
      :attr     {:on-mouse-over (handler-fn (reset! mouse-over row))
                 :on-mouse-out  (handler-fn (reset! mouse-over nil))}
      :children [[re-com/label :label (:user row) :width (:username col-widths)]
-                [re-com/label :label (:port row) :width (:port col-widths)]
+                [re-com/label :label (:port row) :width (:port col-widths)
+                 :style (if (:active row)
+                          {:color "green"}
+                          {})]
                 [re-com/h-box
                  :gap      "2px"
                  :width    (:pubkey col-widths)
