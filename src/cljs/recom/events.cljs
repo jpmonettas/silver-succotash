@@ -21,6 +21,12 @@
       )
     ))
 
+(re-frame/reg-event-db
+  :sort-by
+  (fn  [db [_ by]]
+      (.log js/console (str "sort by " by))
+    (assoc db :users (sort-by by (:users db)))
+    ))
 (re-frame/reg-event-fx
   :copy-public-key
   (fn [cofx [_ key-text]]

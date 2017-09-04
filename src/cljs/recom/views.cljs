@@ -14,7 +14,7 @@
                 [re-com/label :label (:port row) :width (:port col-widths)
                  :style (if (:active row)
                           {:color "green"}
-                          {})]
+                          {:color "black"})]
                 [re-com/h-box
                  :gap      "2px"
                  :width    (:pubkey col-widths)
@@ -124,6 +124,14 @@
               [re-com/button :class "btn btn-default btn-block" :label "delete selected"]
               [re-com/button :class "btn btn-default btn-block" :label "import"]
               [re-com/button :class "btn btn-default btn-block" :label "export"]
+              [re-com/button
+               :class     "btn btn-default btn-block"
+               :on-click  #(re-frame/dispatch [:sort-by :user])
+               :label     "sort by username"]
+              [re-com/button
+               :class     "btn btn-default btn-block"
+               :on-click  #(re-frame/dispatch [:sort-by :port])
+               :label     "sort by port"]
               ]
    ]
   )
