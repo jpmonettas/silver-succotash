@@ -3,6 +3,13 @@
             [re-com.core :as re-com  :refer-macros [handler-fn]]
             [reagent.core :as reagent]))
 ;; TODO: add a selection checkbox
+(def ticked? (reagent/atom {}))
+(defn toogle-selected [atom user]
+  (let [db (set atom)]
+    (if (contains? db [:user user])
+      (disj db [:user user])
+      (conj db [:user user])))
+  )
 (defn data-row
   [row i col-widths mouse-over click-msg]
   (let [mouse-over-row? (identical? @mouse-over row)]
@@ -10,7 +17,11 @@
      :class    "rc-div-table-row"
      :attr     {:on-mouse-over (handler-fn (reset! mouse-over row))
                 :on-mouse-out  (handler-fn (reset! mouse-over nil))}
-     :children [[re-com/label :label (:user row) :width (:username col-widths)]
+     :children [
+                [re-com/checkbox
+                 :model     (contains? @ticked? [:user  (:user row)])
+                 :on-change #(swap! ticked? toogle-selected (:user row))]
+                [re-com/label :label (:user row) :width (:username col-widths)]
                 [re-com/label :label (:port row) :width (:port col-widths)
                  :style (if (:active row)
                           {:color "green"}
@@ -66,12 +77,18 @@
                              ;:on-click #(re-frame/dispatch [:delete-user (:user row)])
                              ]]]
                 ]]))
+(defn select-all []
+  (.log js/console "select allz")
+  )
+
 ;; TODO: add a "select all" checkbox
 ;; TODO: add "by column" sorting capability
 (defn data-table
   [rows col-widths]
   (let [mouse-over (reagent/atom nil)
-        click-msg  (reagent/atom "")]
+        click-msg  (reagent/atom "")
+        all-selected  (reagent/atom "")
+        ]
     (fn []
       [re-com/v-box
        :align    :start
@@ -81,7 +98,11 @@
                    :class    "rc-div-table"
                    :children [[re-com/h-box
                                :class    "rc-div-table-header"
-                               :children [[re-com/label :label "Username" :width (:username    col-widths)]
+                               :children [
+                                         [re-com/checkbox
+                                          :model     all-selected
+                                          :on-change select-all]
+                                          [re-com/label :label "Username" :width (:username    col-widths)]
                                           [re-com/label :label "Port"    :width (:port    col-widths)]
                                           [re-com/label :label "Public"      :width (:pubkey     col-widths)]
                                           [re-com/label :label "Private"    :width (:privkey    col-widths)]

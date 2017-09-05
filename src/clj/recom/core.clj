@@ -15,7 +15,6 @@
 ;; TODO: add add a timestamp to the atom so the client knows if something is missing
 (def users (atom {}))
 
-
 ;; for security reasons, we destroy the key after reading
 (defn private_key [n]
   (let [pkey (:out (clojure.java.shell/sh "bash" "-c" (str "cat /home/bhdev/private_keys/" n)))]
