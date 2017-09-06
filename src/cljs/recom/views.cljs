@@ -77,9 +77,7 @@
                              ;:on-click #(re-frame/dispatch [:delete-user (:user row)])
                              ]]]
                 ]]))
-(defn select-all []
-  (.log js/console "select allz")
-  )
+(def all-selected (reagent/atom false))
 
 ;; TODO: add a "select all" checkbox
 ;; TODO: add "by column" sorting capability
@@ -87,7 +85,6 @@
   [rows col-widths]
   (let [mouse-over (reagent/atom nil)
         click-msg  (reagent/atom "")
-        all-selected  (reagent/atom "")
         ]
     (fn []
       [re-com/v-box
@@ -101,7 +98,8 @@
                                :children [
                                          [re-com/checkbox
                                           :model     all-selected
-                                          :on-change select-all]
+                                          :on-change  #(re-frame/dispatch [:select-all])
+                                          ]
                                           [re-com/label :label "Username" :width (:username    col-widths)]
                                           [re-com/label :label "Port"    :width (:port    col-widths)]
                                           [re-com/label :label "Public"      :width (:pubkey     col-widths)]

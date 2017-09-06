@@ -20,6 +20,25 @@
         ))
       )
     ))
+@recom.views/ticked?
+(re-frame/reg-event-db
+  :select-all
+  (fn  [db _ ]
+    (reset! recom.views/all-selected (not @recom.views/all-selected ))
+    (if @recom.views/all-selected
+      (let [users (:users db)
+            t  (map
+                 (fn [n]
+                      [:user (:user n)]
+                      )
+                    users)
+            ]
+        (reset! recom.views/ticked? (set t))
+        )
+      (reset! recom.views/ticked? {})
+      )
+    db
+    ))
 
 (re-frame/reg-event-db
   :sort-by
