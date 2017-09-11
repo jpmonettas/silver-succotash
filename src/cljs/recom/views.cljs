@@ -129,7 +129,7 @@
                   ]]
     )
   ))
-
+;; TODO: show a semaphore for server status by monitoring EventStream sanity
 (defn side-bar []
   [re-com/v-box
    :height "300px"

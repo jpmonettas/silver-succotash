@@ -3,8 +3,6 @@
             [clojure.walk :as walk]
             [ajax.core :as ajax]
             [clojure.set :as set]))
-
-
 (re-frame/reg-event-db
   :users
   (fn  [db [_ users]]
@@ -20,7 +18,7 @@
         ))
       )
     ))
-@recom.views/ticked?
+
 (re-frame/reg-event-db
   :select-all
   (fn  [db _ ]
@@ -77,9 +75,8 @@
 (re-frame/reg-event-fx                             ;; note the trailing -fx
   :download-private-key                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
-    {:http-xhrio {:method          :post
-                  :uri             "http://localhost:9094/users/private_key"
-                  :params {:username username}
+    {:http-xhrio {:method          :get
+                  :uri             (str "http://localhost:9094/user/" username "/private_key")
                   :timeout         8000
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
@@ -98,8 +95,8 @@
   :delete-user                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
     {:http-xhrio {:method          :post
-                  :uri             "http://localhost:9094/users/delete"
-                  :params {:username username}
+                  :uri             (str "http://localhost:9094/user/" username "/delete")
+                  :params {}
                   :timeout         8000
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.

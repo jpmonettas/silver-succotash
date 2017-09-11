@@ -8,6 +8,10 @@
             [clojure.data :as data]
             [clojure.set :as set]
             [clojure.core.async :refer [<! timeout thread go go-loop >!! <!! offer! poll! chan]]
+            [compojure.route :refer [files not-found]]
+            [compojure.handler :refer [site]] ; form, query params decode; cookie; session, etc
+            [compojure.core :refer [defroutes GET POST DELETE OPTIONS ANY context]]
+            [ring.middleware.cors :refer [wrap-cors]]
             ))
 (def canales (atom {"/users" []
                     ;"/resources" []
@@ -18,11 +22,13 @@
 ;; for security reasons, we destroy the key after reading
 (defn private_key [n]
   (let [pkey (:out (clojure.java.shell/sh "bash" "-c" (str "cat /home/bhdev/private_keys/" n)))]
-    (if pkey
-      (clojure.java.shell/sh "bash" "-c" (str "rm /home/bhdev/private_keys/" n)))
-    {:user n
-     :privkey   pkey
-     }
+    (if-not (str/blank? pkey)
+      (do
+        (clojure.java.shell/sh "bash" "-c" (str "rm /home/bhdev/private_keys/" n))
+        {:user n
+         :privkey   pkey
+         })
+      )
     )
   )
 ;; TODO: we should also delete /home/<user> folder
@@ -151,56 +157,6 @@
       )
     )
   )
-;; TODO: on first contact we send base and then publish only differences
-;; TODO: be sure we have a POST so we dont execute on OPTIONS and then on POST
-(defn handler [req]
-  (let [jeyson (if (:body req) (walk/keywordize-keys (json/read-str (slurp (:body req)))))]
-    ;;(println (= (:request-method req) :post))
-    (if (contains? @canales (:uri req))
-      (server/with-channel req channel
-                           (swap! canales (fn [m]
-                                            (update m (:uri req) conj channel)))
-                           (server/send! channel
-                                         {:status 200
-                                          :headers {"Content-type" "text/event-stream"
-                                                    "Access-Control-Allow-Origin" "*"}}
-                                         false)
-                           (server/send! channel
-                                         (str "data:" (json/json-str (mydiff {} @users)) "\n\n")
-                                         false)
-                           )
-      (if (=(:uri req) "/private_key")
-        {:status 405}
-        (if (=(:uri req) "/users/private_key")
-          {:status 200
-           :headers {"Content-type" "application/json"
-                     "Access-Control-Allow-Origin" "*"
-                     "Access-Control-Allow-Headers" "Content-Type"}
-           :body  (json/write-str{:filename (:username jeyson)
-                                  :content (private_key (:username jeyson))})
-           }
-          (if (=(:uri req) "/users/delete")
-            {:status 200
-             :headers {"Content-type" "application/json"
-                       "Access-Control-Allow-Origin" "*"
-                       "Access-Control-Allow-Headers" "Content-Type"}
-             :body (json/write-str{:success (delete-user (:username jeyson))})}
-            (if (=(:uri req) "/users/create")
-              {:status 200
-               :headers {"Content-type" "application/json"
-                         "Access-Control-Allow-Origin" "*"
-                         "Access-Control-Allow-Headers" "Content-Type"}
-               :body (if (= (:request-method req) :post)
-                       (json/write-str{:success (create-user)})
-                       {})
-               }
-              {:status 404}))
-          )
-        )
-      )
-    )
-
-  )
 
 
 (defn list-existing-users []
@@ -277,9 +233,70 @@
 (.start t3)
 
 ; #' passes reference instead of copy
-(def s (server/run-server #'handler {:port 9094}))
+;(def s (server/run-server #'handler {:port 9094}))
 ;(s)
 ;(edn/readstring)
 ;transit
 
 
+(defn show-users [req]
+  (server/with-channel req channel
+                       (swap! canales (fn [m]
+                                        (update m (:uri req) conj channel)))
+                       (server/send! channel
+                                     {:status 200
+                                      :headers {"Content-type" "text/event-stream"
+                                                "Access-Control-Allow-Origin" "*"}}
+                                     false)
+                       (server/send! channel
+                                     (str "data:" (json/json-str (mydiff {} @users)) "\n\n")
+                                     false)
+                       ))
+
+(defn get-private-key [req]
+  (let [params (:params req)
+        privkey (private_key (:id params))]
+    (if privkey
+      {:status  200
+       :headers {"Content-type" "application/json"}
+       :body    (json/write-str {:filename (:id params)
+                                 :content  privkey})
+       }
+      {:status  404}
+      )
+    )
+  )
+(defn handle-create-user [req]
+    {:status 200
+     :headers {"Content-type" "application/json"}
+     :body  (json/write-str{:success (create-user)})
+     })
+
+(defn handle-delete-user [req]
+  (let [params (:params req)]
+    (println (str "deleted: " (:id params)))
+    {:status  200
+     :headers {"Content-type" "application/json"}
+     :body    (json/write-str {:success (delete-user (:id params))})}
+    )
+  )
+
+
+;; TODO: on first contact we send base and then publish only differences
+;; TODO: be sure we have a POST so we dont execute on OPTIONS and then on POST
+
+(defroutes all-routes
+           (GET "/users" [] show-users)
+           (POST "/users/create" [] handle-create-user)
+           (context "/user/:id" []
+                    (GET "/private_key" [] get-private-key)
+                    (POST "/delete" [] handle-delete-user)
+                    )
+           (files "/static/") ;; static file url prefix /static, in `public` folder
+           (not-found "<p>Page not found.</p>")) ;; all other, return 404
+(def handler
+(wrap-cors (site all-routes) :access-control-allow-origin [#".*"]
+           :access-control-allow-methods [:get :put :post :delete]))
+
+(def serv (server/run-server #'handler {:port 9094}))
+;(serv)

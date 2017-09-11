@@ -9,7 +9,10 @@
                  [org.clojure/data.json "0.2.6"]
                  [re-frisk "0.4.5"]
                  [day8.re-frame/http-fx "0.1.4"]
-                 [cljs-ajax "0.6.0"]]
+                 [cljs-ajax "0.6.0"]
+                 [com.cemerick/friend "0.2.3"]
+                 [compojure "1.6.0"]
+                 [ring-cors "0.1.11"]]
 
   :plugins [[lein-cljsbuild "1.1.4"]]
 
