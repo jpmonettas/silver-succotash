@@ -12,7 +12,9 @@
                  [cljs-ajax "0.6.0"]
                  [com.cemerick/friend "0.2.3"]
                  [compojure "1.6.0"]
-                 [ring-cors "0.1.11"]]
+                 [ring-cors "0.1.11"]
+                 [noencore "0.3.3"]
+                 [hiccup "1.0.5"]]
 
   :plugins [[lein-cljsbuild "1.1.4"]]
 

@@ -1,7 +1,8 @@
 (ns recom.utils
   (:require [re-frame.core :as re-frame]
             [re-com.core :as re-com  :refer-macros [handler-fn]]
-            [reagent.core :as reagent]))
+            [reagent.core :as reagent]
+            [no.en.core :refer [base64-encode]]))
 
 (defn copy [text]
   (let [dummy (.createElement js/document "input")]

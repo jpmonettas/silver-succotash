@@ -12,6 +12,12 @@
             [compojure.handler :refer [site]] ; form, query params decode; cookie; session, etc
             [compojure.core :refer [defroutes GET POST DELETE OPTIONS ANY context]]
             [ring.middleware.cors :refer [wrap-cors]]
+            [cemerick.friend :as friend]
+            [ring.util.response :as resp]
+            [hiccup.page :as h]
+            [hiccup.element :as e]
+            (cemerick.friend [workflows :as workflows]
+                             [credentials :as creds])
             ))
 (def canales (atom {"/users" []
                     ;"/resources" []
@@ -64,8 +70,7 @@
     lines->ports
     open-ssh-connections
     ))
-;(open-ssh-connections (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "sudo lsof -i -n"))))
-{:proc "sshd", :proto "IPv4", :user "bh247_xcuhgzvr", :port "2291", :open? true}
+
 
 (defn is-active-port [ssh-connections user port]
   (contains? ssh-connections
@@ -84,10 +89,7 @@
   ([n]
    (let [chars-between #(map char (range (int %1) (inc (int %2))))
          chars (concat
-                 ;(chars-between \0 \9)
                  (chars-between \a \z)
-                 ;(chars-between \A \Z)
-                 ;[\_]
                  )
          password (take n (repeatedly #(rand-nth chars)))]
      (reduce str password)
@@ -222,7 +224,7 @@
 
     )
   )
-@users
+;@users
 ;(reset! users {})
 
 (def t3 (Thread. (fn []
@@ -268,7 +270,8 @@
   )
 (defn handle-create-user [req]
     {:status 200
-     :headers {"Content-type" "application/json"}
+     :headers {"Content-type" "application/json"
+               "Access-Control-Allow-Origin" "*"}
      :body  (json/write-str{:success (create-user)})
      })
 
@@ -282,21 +285,105 @@
   )
 
 
+
+(def login-form
+  [:div {:class "row"}
+   [:div {:class "columns small-12"}
+    [:h3 "Login"]
+    [:div {:class "row"}
+     [:form {:method "POST" :action "login" :class "columns small-4"}
+      [:div "Username" [:input {:type "text" :name "username"}]]
+      [:div "Password" [:input {:type "password" :name "password"}]]
+      [:div [:input {:type "submit" :class "button" :value "Login"}]]]]]])
+
+
 ;; TODO: on first contact we send base and then publish only differences
 ;; TODO: be sure we have a POST so we dont execute on OPTIONS and then on POST
-
 (defroutes all-routes
+           (GET "/" req
+                (h/html5
+                    [:p (if-let [identity (friend/identity req)]
+                          (apply str "Logged in, with these roles: "
+                                 (-> identity friend/current-authentication :roles))
+                          "anonymous user")]
+                    login-form
+
+                    [:ul [:li (e/link-to "/role-user" "Requires the `user` role")]
+                     [:li (e/link-to "/role-admin" "Requires the `admin` role")]
+                     [:li (e/link-to  "/requires-authentication"
+                                     "Requires any authentication, no specific role requirement")]]
+                    [:p (e/link-to "/logout" "Click here to log out") "."]))
+           (GET "/login" req (h/html5 login-form))
+           (GET "/logout" req
+                (friend/logout* (resp/redirect (str (:context req) "/"))))
+           (GET "/requires-authentication" req
+                (friend/authenticated "Thanks for authenticating!"))
+           (GET "/role-user" req
+                (friend/authorize #{::user} "You're a user!"))
+           (GET "/role-admin" req
+                (friend/authorize #{::admin} "You're an admin!"))
            (GET "/users" [] show-users)
-           (POST "/users/create" [] handle-create-user)
+           (POST "/users/create" req (friend/authenticated handle-create-user))
            (context "/user/:id" []
                     (GET "/private_key" [] get-private-key)
                     (POST "/delete" [] handle-delete-user)
                     )
-           (files "/static/") ;; static file url prefix /static, in `public` folder
+
+           ;(files "/static/") ;; static file url prefix /static, in `public` folder
            (not-found "<p>Page not found.</p>")) ;; all other, return 404
+
+
 (def handler
 (wrap-cors (site all-routes) :access-control-allow-origin [#".*"]
            :access-control-allow-methods [:get :put :post :delete]))
 
-(def serv (server/run-server #'handler {:port 9094}))
+; a dummy in-memory user "database"
+
+(def users2 (atom {"friend" {:username "friend"
+                            :password (creds/hash-bcrypt "clojure")
+                            :pin "1234" ;; only used by multi-factor
+                            :roles #{::user}}
+                  "friend-admin" {:username "admin"
+                                  :password (creds/hash-bcrypt "clojure")
+                                  :pin "1234" ;; only used by multi-factor
+                                  :roles #{::admin}}}))
+
+;(def app
+;  (wrap-cors
+;    (site
+;    (friend/authenticate all-routes
+;                         {:credential-fn (partial creds/bcrypt-credential-fn @users2)
+;                          :workflows [(workflows/interactive-form)]}))
+;    :access-control-allow-origin [#".*"]
+;    :access-control-allow-methods [:get :put :post :delete])
+;    )
+
+(def secured-app
+  (wrap-cors
+    (site
+      (friend/authenticate all-routes
+         {:allow-anon? true
+          :unauthenticated-handler #(workflows/http-basic-deny "Friend demo" %)
+          :workflows [(workflows/http-basic
+                        :credential-fn #(creds/bcrypt-credential-fn @users2 %)
+                        :realm "Friend demo")]}))
+    :access-control-allow-origin [#".*"]
+    :access-control-allow-methods [:get :put :post :delete])
+  )
+;(def page
+;  (wrap-cors
+;    (site
+;      (friend/authenticate all-routes
+;              {:allow-anon? true
+;               :login-uri "/login"
+;               :default-landing-uri "/"
+;               :unauthorized-handler #(-> (h/html5 [:h2 "You do not have sufficient privileges to access " (:uri %)])
+;                                          resp/response
+;                                          (resp/status 401))
+;               :credential-fn #(creds/bcrypt-credential-fn @users2 %)
+;               :workflows [(workflows/interactive-form)]}))))
+;(def serv (server/run-server #'app {:port 9094}))
+(def serv2 (server/run-server #'secured-app {:port 9094}))
 ;(serv)
+;(serv2)
+

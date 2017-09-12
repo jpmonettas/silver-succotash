@@ -2,7 +2,9 @@
   (:require [re-frame.core :as re-frame]
             [clojure.walk :as walk]
             [ajax.core :as ajax]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [recom.utils :as utils]
+            [no.en.core :refer [base64-encode]]))
 (re-frame/reg-event-db
   :users
   (fn  [db [_ users]]
@@ -109,6 +111,8 @@
   :send-command                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ req]]                    ;; the first param will be "world"
     {:http-xhrio {:method          :post
+                  ;:with-credentials true
+                  :headers { :authorization (str "Basic " (base64-encode (str "friend" ":" "clojure")))}
                   :uri             (str "http://localhost:9094/" (:endpoint req))
                   :params (:params req)
                   :timeout         8000
