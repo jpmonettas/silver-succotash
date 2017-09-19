@@ -11,11 +11,12 @@
             [compojure.route :refer [files not-found]]
             [compojure.handler :refer [site]] ; form, query params decode; cookie; session, etc
             [compojure.core :refer [defroutes GET POST DELETE OPTIONS ANY context]]
-            [ring.middleware.cors :refer [wrap-cors]]
+            [ring.middleware.cors :refer [wrap-cors wrap-params]]
             [cemerick.friend :as friend]
             [ring.util.response :as resp]
             [hiccup.page :as h]
             [hiccup.element :as e]
+            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             (cemerick.friend [workflows :as workflows]
                              [credentials :as creds])
             ))
@@ -337,26 +338,9 @@
 (wrap-cors (site all-routes) :access-control-allow-origin [#".*"]
            :access-control-allow-methods [:get :put :post :delete]))
 
-; a dummy in-memory user "database"
 
-(def users2 (atom {"friend" {:username "friend"
-                            :password (creds/hash-bcrypt "clojure")
-                            :pin "1234" ;; only used by multi-factor
-                            :roles #{::user}}
-                  "friend-admin" {:username "admin"
-                                  :password (creds/hash-bcrypt "clojure")
-                                  :pin "1234" ;; only used by multi-factor
-                                  :roles #{::admin}}}))
 
-;(def app
-;  (wrap-cors
-;    (site
-;    (friend/authenticate all-routes
-;                         {:credential-fn (partial creds/bcrypt-credential-fn @users2)
-;                          :workflows [(workflows/interactive-form)]}))
-;    :access-control-allow-origin [#".*"]
-;    :access-control-allow-methods [:get :put :post :delete])
-;    )
+(def tokens->users (atom {}))
 
 (def secured-app
   (wrap-cors
@@ -370,20 +354,48 @@
     :access-control-allow-origin [#".*"]
     :access-control-allow-methods [:get :put :post :delete])
   )
-;(def page
-;  (wrap-cors
-;    (site
-;      (friend/authenticate all-routes
-;              {:allow-anon? true
-;               :login-uri "/login"
-;               :default-landing-uri "/"
-;               :unauthorized-handler #(-> (h/html5 [:h2 "You do not have sufficient privileges to access " (:uri %)])
-;                                          resp/response
-;                                          (resp/status 401))
-;               :credential-fn #(creds/bcrypt-credential-fn @users2 %)
-;               :workflows [(workflows/interactive-form)]}))))
-;(def serv (server/run-server #'app {:port 9094}))
+
 (def serv2 (server/run-server #'secured-app {:port 9094}))
 ;(serv)
 ;(serv2)
 
+(defn token-auth-mid [next-h]
+  (fn [req]
+    (if (contains? @tokens->users (get-in req [:headers "token-auth"]))
+      (next-h req)
+      {:status 403})))
+
+(def non-secure (POST "/login" [user pass]
+                  (if (= pass "pass")
+                    (let [token (str (rand-int 1000))]
+                      (swap! tokens->users assoc token user)
+                      {:status 200
+                       :body token})
+                    {:status 403})))
+(def secure-rutas
+  (routes
+    (GET "/test" req
+      {:body "Hola"})
+    (GET "/pepe" req
+      {:body "Chau"})))
+
+(def rutas
+  (-> (routes
+
+        non-secure
+
+        (-> secure-rutas
+            token-auth-mid))
+
+      wrap-keyword-params
+      wrap-params))
+
+(rutas {:request-method :post
+        :uri "/login"
+        :query-string "user=token&pass=pass"})
+
+(rutas {:request-method :get
+        :uri "/test"
+        :headers {"token-auth" "417"}})
+
+@tokens->users
