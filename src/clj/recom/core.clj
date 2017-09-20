@@ -1,4 +1,5 @@
 (ns recom.core
+  (:import java.security.SecureRandom)
   (:require [org.httpkit.server :as server]
             [org.httpkit.timer :as timer]
             [clojure.string :as str]
@@ -10,15 +11,13 @@
             [clojure.core.async :refer [<! timeout thread go go-loop >!! <!! offer! poll! chan]]
             [compojure.route :refer [files not-found]]
             [compojure.handler :refer [site]] ; form, query params decode; cookie; session, etc
-            [compojure.core :refer [defroutes GET POST DELETE OPTIONS ANY context]]
-            [ring.middleware.cors :refer [wrap-cors wrap-params]]
-            [cemerick.friend :as friend]
+            [compojure.core :refer [routes GET POST DELETE OPTIONS ANY context]]
+            [ring.middleware.cors :refer [wrap-cors]]
+            [ring.middleware.params :refer [wrap-params]]
             [ring.util.response :as resp]
             [hiccup.page :as h]
             [hiccup.element :as e]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
-            (cemerick.friend [workflows :as workflows]
-                             [credentials :as creds])
             ))
 (def canales (atom {"/users" []
                     ;"/resources" []
@@ -164,30 +163,30 @@
 
 (defn list-existing-users []
   (filter
-    (fn [n] (str/starts-with? n "bh247_"))
-    (str/split-lines (:out (clojure.java.shell/sh "bash" "-c" "awk -F':' '{ print $1}' /etc/passwd")))
-    )
-  )
-
-(defn port [user]
-  (let [line (second (str/split (:out (clojure.java.shell/sh "bash" "-c" (str "sudo cat /home/" user "/.ssh/authorized_keys")))#"permitopen="))]
-    (if (not (nil? line))
-      (str/replace
-        (second
-          (str/split
-            (first
-              (str/split
-                line
-                #",command"))
-            #":"
-            ))
-        #"\""
-        ""
-        )
+    #(str/starts-with? % "bh247_")
+    (->>
+      (clojure.java.shell/sh "bash" "-c" "awk -F':' '{ print $1}' /etc/passwd")
+      (:out)
+      (str/split-lines)
       )
     )
   )
-
+;(list-existing-users)
+(defn port [user]
+  (->> user
+       (#(str "sudo cat /home/" % "/.ssh/authorized_keys"))
+       (clojure.java.shell/sh "bash" "-c")
+       (:out)
+       (#(str/split % #"permitopen="))
+       (second)
+       (#(str/split % #",command"))
+       (first)
+       (#(str/split % #":"))
+       (second)
+       (#(str/replace % #"\"" ""))
+       )
+  )
+(port "bh247_bntdaitw")
 
 (defn users-data []
   (let [open (list-ssh-connections)]
@@ -284,118 +283,95 @@
      :body    (json/write-str {:success (delete-user (:id params))})}
     )
   )
+(def tokens->users (atom {}))
+;; TODO: secure random token (ex hashing a random number)
+;; TODO: assigning session id (auth= id:token) and time validity to token
+;;
+
+(defn random-bytes
+  [length]
+  (let [gen (new SecureRandom) key (byte-array length)]
+    (.nextBytes gen key)
+    key))
+
+(defn- hexify [bs]
+  (let [hex [\0 \1 \2 \3 \4 \5 \6 \7 \8 \9 \a \b \c \d \e \f]]
+    (letfn [(hexify-byte [b]
+              (let [v (bit-and b 0xFF)]
+                [(hex (bit-shift-right v 4)) (hex (bit-and v 0x0F))]))]
+      (apply str (mapcat hexify-byte bs)))))
 
 
-
-(def login-form
-  [:div {:class "row"}
-   [:div {:class "columns small-12"}
-    [:h3 "Login"]
-    [:div {:class "row"}
-     [:form {:method "POST" :action "login" :class "columns small-4"}
-      [:div "Username" [:input {:type "text" :name "username"}]]
-      [:div "Password" [:input {:type "password" :name "password"}]]
-      [:div [:input {:type "submit" :class "button" :value "Login"}]]]]]])
-
+;; TODO: use :expires instead of timestamp
+(defn login [user pass]
+  (if (and (= pass "pass") (= user "admin"))
+    (let [token (hexify (random-bytes 32))
+          timestamp (quot (System/currentTimeMillis) 1000)]
+      (swap! tokens->users assoc token {:user user :timestamp timestamp})
+      {:status 200
+       :body token})
+    {:status 403})
+  )
+(login "admin" "pass")
+@tokens->users
+;; TODO: 
+(defn token-auth-mid [next-h]
+  (fn [req]
+    (do
+      (println "token-middleware")
+      (if (contains? @tokens->users (get-in req [:headers "token-auth"]))
+        (next-h req)
+        {:status 403})
+      )
+    ))
+;; TODO: destroy the token
+(defn logout [req]
+  "logout")
 
 ;; TODO: on first contact we send base and then publish only differences
 ;; TODO: be sure we have a POST so we dont execute on OPTIONS and then on POST
-(defroutes all-routes
-           (GET "/" req
-                (h/html5
-                    [:p (if-let [identity (friend/identity req)]
-                          (apply str "Logged in, with these roles: "
-                                 (-> identity friend/current-authentication :roles))
-                          "anonymous user")]
-                    login-form
-
-                    [:ul [:li (e/link-to "/role-user" "Requires the `user` role")]
-                     [:li (e/link-to "/role-admin" "Requires the `admin` role")]
-                     [:li (e/link-to  "/requires-authentication"
-                                     "Requires any authentication, no specific role requirement")]]
-                    [:p (e/link-to "/logout" "Click here to log out") "."]))
-           (GET "/login" req (h/html5 login-form))
-           (GET "/logout" req
-                (friend/logout* (resp/redirect (str (:context req) "/"))))
-           (GET "/requires-authentication" req
-                (friend/authenticated "Thanks for authenticating!"))
-           (GET "/role-user" req
-                (friend/authorize #{::user} "You're a user!"))
-           (GET "/role-admin" req
-                (friend/authorize #{::admin} "You're an admin!"))
-           (GET "/users" [] show-users)
-           (POST "/users/create" req (friend/authenticated handle-create-user))
-           (context "/user/:id" []
-                    (GET "/private_key" [] get-private-key)
-                    (POST "/delete" [] handle-delete-user)
-                    )
-
-           ;(files "/static/") ;; static file url prefix /static, in `public` folder
-           (not-found "<p>Page not found.</p>")) ;; all other, return 404
-
-
-(def handler
-(wrap-cors (site all-routes) :access-control-allow-origin [#".*"]
-           :access-control-allow-methods [:get :put :post :delete]))
-
-
-
-(def tokens->users (atom {}))
-
-(def secured-app
-  (wrap-cors
-    (site
-      (friend/authenticate all-routes
-         {:allow-anon? true
-          :unauthenticated-handler #(workflows/http-basic-deny "Friend demo" %)
-          :workflows [(workflows/http-basic
-                        :credential-fn #(creds/bcrypt-credential-fn @users2 %)
-                        :realm "Friend demo")]}))
-    :access-control-allow-origin [#".*"]
-    :access-control-allow-methods [:get :put :post :delete])
+(def private-routes
+  (routes
+    (GET "/logout" req logout)
+    (GET "/users" [] show-users)
+    (POST "/users/create" req handle-create-user)
+    (context "/user/:id" []
+      (GET "/private_key" [] get-private-key)
+      (POST "/delete" [] handle-delete-user)
+      )
+    )) ;; all other, return 404
+(def public-routes
+  (routes
+    (POST "/login" [user pass] (login user pass))
+    (GET "/" req "Home")
+    )
   )
 
-(def serv2 (server/run-server #'secured-app {:port 9094}))
+(def app
+  (wrap-cors
+  (-> (routes
+          public-routes
+          (-> private-routes
+              token-auth-mid)
+          (not-found {:status 404})
+          )
+        wrap-keyword-params
+        wrap-params)
+  :access-control-allow-origin [#".*"]
+  :access-control-allow-methods [:get :put :post :delete])
+  )
+(app {:request-method :get
+      :uri "/"})
+(app {:request-method :post
+        :uri "/login"
+        :query-string "user=admin&pass=pass"})
+
+(app {:request-method :get
+        :uri "/logout"
+        :headers {"token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"}})
+
+
+
+;(def serv2 (server/run-server #'app {:port 9094}))
 ;(serv)
 ;(serv2)
-
-(defn token-auth-mid [next-h]
-  (fn [req]
-    (if (contains? @tokens->users (get-in req [:headers "token-auth"]))
-      (next-h req)
-      {:status 403})))
-
-(def non-secure (POST "/login" [user pass]
-                  (if (= pass "pass")
-                    (let [token (str (rand-int 1000))]
-                      (swap! tokens->users assoc token user)
-                      {:status 200
-                       :body token})
-                    {:status 403})))
-(def secure-rutas
-  (routes
-    (GET "/test" req
-      {:body "Hola"})
-    (GET "/pepe" req
-      {:body "Chau"})))
-
-(def rutas
-  (-> (routes
-
-        non-secure
-
-        (-> secure-rutas
-            token-auth-mid))
-
-      wrap-keyword-params
-      wrap-params))
-
-(rutas {:request-method :post
-        :uri "/login"
-        :query-string "user=token&pass=pass"})
-
-(rutas {:request-method :get
-        :uri "/test"
-        :headers {"token-auth" "417"}})
-
-@tokens->users
