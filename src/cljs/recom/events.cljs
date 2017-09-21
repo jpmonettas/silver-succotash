@@ -121,7 +121,20 @@
                   :on-success      [:toast {:text (str "Created user" ) :duration 3000}]
                   :on-failure      [:toast {:text "Error Creating User" :duration 3000}]
                   }}))
-
+(re-frame/reg-event-fx                             ;; note the trailing -fx
+  :login-user                      ;; usage:  (dispatch [:handler-with-http])
+  (fn [{:keys [db]} [_ credentials]]                    ;; the first param will be "world"
+    (.log js/console (str "credentials: " credentials))
+    {:http-xhrio {:method          :post
+                  ;:with-credentials true
+                  :uri             (str "http://localhost:9094/login")
+                  :params  credentials
+                  :timeout         8000
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
+                  :on-success      [:toast {:text (str "Created user" ) :duration 3000}]
+                  :on-failure      [:toast {:text "Error Creating User" :duration 3000}]
+                  }}))
 (re-frame/reg-event-db
   :http-result
   (fn [db [_ result]]

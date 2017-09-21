@@ -13,7 +13,8 @@
             [compojure.handler :refer [site]] ; form, query params decode; cookie; session, etc
             [compojure.core :refer [routes GET POST DELETE OPTIONS ANY context]]
             [ring.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.params :refer [wrap-params]]
+            ;[ring.middleware.params :refer [wrap-params]]
+            [ring.middleware.json :refer [wrap-json-params]]
             [ring.util.response :as resp]
             [hiccup.page :as h]
             [hiccup.element :as e]
@@ -303,18 +304,22 @@
 
 
 ;; TODO: use :expires instead of timestamp
-(defn login [user pass]
-  (if (and (= pass "pass") (= user "admin"))
-    (let [token (hexify (random-bytes 32))
-          timestamp (quot (System/currentTimeMillis) 1000)]
-      (swap! tokens->users assoc token {:user user :timestamp timestamp})
-      {:status 200
-       :body token})
-    {:status 403})
+(defn login [creds]
+  (println (str "login:" (creds "user")))
+  (let [user (:user creds)
+        pass (:pass creds)]
+    (if (and (= pass "pass") (= user "admin"))
+      (let [token (hexify (random-bytes 32))
+            timestamp (quot (System/currentTimeMillis) 1000)]
+        (swap! tokens->users assoc token {:user user :timestamp timestamp})
+        {:status 200
+         :body token})
+      {:status 403})
+    )
   )
-(login "admin" "pass")
+;(login "admin" "pass")
 @tokens->users
-;; TODO: 
+;; TODO:
 (defn token-auth-mid [next-h]
   (fn [req]
     (do
@@ -342,36 +347,37 @@
     )) ;; all other, return 404
 (def public-routes
   (routes
-    (POST "/login" [user pass] (login user pass))
+    (POST "/login" req (login (clojure.walk/keywordize-keys (:json-params req))))
     (GET "/" req "Home")
     )
   )
 
 (def app
   (wrap-cors
-  (-> (routes
+    (-> (routes
           public-routes
           (-> private-routes
               token-auth-mid)
           (not-found {:status 404})
           )
-        wrap-keyword-params
-        wrap-params)
+        wrap-json-params
+        )
   :access-control-allow-origin [#".*"]
   :access-control-allow-methods [:get :put :post :delete])
   )
 (app {:request-method :get
       :uri "/"})
+;(app {:request-method :post
+;        :uri "/login"
+;        :query-string "user=admin&pass=pass"})
 (app {:request-method :post
-        :uri "/login"
-        :query-string "user=admin&pass=pass"})
-
+      :uri "/login"
+      :json-params {:user "admin" :pass "pass"}})
 (app {:request-method :get
         :uri "/logout"
         :headers {"token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"}})
 
 
 
-;(def serv2 (server/run-server #'app {:port 9094}))
+(def serv (server/run-server #'app {:port 9094}))
 ;(serv)
-;(serv2)

@@ -13,6 +13,7 @@
                  [compojure "1.6.0"]
                  [javax.servlet/servlet-api "2.5"]
                  [ring-cors "0.1.11"]
+                 [ring/ring-json "0.4.0"]
                  [noencore "0.3.3"]
                  [hiccup "1.0.5"]]
 

@@ -141,7 +141,10 @@
                :label     "create user"]
               [re-com/button :class "btn btn-default btn-block" :label "create bulk"]
               [re-com/button :class "btn btn-default btn-block" :label "delete selected"]
-              [re-com/button :class "btn btn-default btn-block" :label "import"]
+              [re-com/button
+               :class "btn btn-default btn-block"
+               :on-click  #(re-frame/dispatch [:login-user {:user "admin" :pass "pass"}])
+               :label "import"]
               [re-com/button :class "btn btn-default btn-block" :label "export"]
               [re-com/button
                :class     "btn btn-default btn-block"
