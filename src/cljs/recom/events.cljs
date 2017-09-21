@@ -4,6 +4,7 @@
             [ajax.core :as ajax]
             [clojure.set :as set]
             [recom.utils :as utils]
+            [recom.db :as db]
             [no.en.core :refer [base64-encode]]))
 (re-frame/reg-event-db
   :users
@@ -74,6 +75,13 @@
     {:download-text {:text (:privkey (:content body))
                          :filename (:filename body)}}))
 
+(re-frame/reg-event-fx
+  :save-token
+  (fn [db [_ token]]
+    (.log js/console token)
+    (reset! db/token token)
+    {}
+    ))
 (re-frame/reg-event-fx                             ;; note the trailing -fx
   :download-private-key                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
@@ -124,16 +132,16 @@
 (re-frame/reg-event-fx                             ;; note the trailing -fx
   :login-user                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ credentials]]                    ;; the first param will be "world"
-    (.log js/console (str "credentials: " credentials))
+    (.log js/console (str "credentials: " @db/credentials))
     {:http-xhrio {:method          :post
                   ;:with-credentials true
                   :uri             (str "http://localhost:9094/login")
                   :params  credentials
                   :timeout         8000
                   :format          (ajax/json-request-format)
-                  :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
-                  :on-success      [:toast {:text (str "Created user" ) :duration 3000}]
-                  :on-failure      [:toast {:text "Error Creating User" :duration 3000}]
+                  :response-format (ajax/text-response-format)
+                  :on-success      [:save-token]
+                  :on-failure      [:failed-login]
                   }}))
 (re-frame/reg-event-db
   :http-result
