@@ -13,7 +13,7 @@
             [compojure.handler :refer [site]] ; form, query params decode; cookie; session, etc
             [compojure.core :refer [routes GET POST DELETE OPTIONS ANY context]]
             [ring.middleware.cors :refer [wrap-cors]]
-            ;[ring.middleware.params :refer [wrap-params]]
+            [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.json :refer [wrap-json-params]]
             [ring.util.response :as resp]
             [hiccup.page :as h]
@@ -305,7 +305,7 @@
 
 ;; TODO: use :expires instead of timestamp
 (defn login [creds]
-  (println (str "login:" (creds "user")))
+  (println "login")
   (let [user (:user creds)
         pass (:pass creds)]
     (if (and (= pass "pass") (= user "admin"))
@@ -319,16 +319,17 @@
   )
 ;(login "admin" "pass")
 @tokens->users
-;; TODO:
+;; TODO: increase :expires each time we succeed
 (defn token-auth-mid [next-h]
   (fn [req]
-    (do
-      (println "token-middleware")
-      (if (contains? @tokens->users (get-in req [:headers "token-auth"]))
+    (println req)
+    (let [token (if (= (:uri req) "/users")
+                   (get-in req [:params "token-auth"]) ;; EvSource doesnt handle headers well
+                   (get-in req [:headers "token-auth"]))]
+      (if (contains? @tokens->users token)
         (next-h req)
         {:status 403})
-      )
-    ))
+      )))
 ;; TODO: destroy the token
 (defn logout [req]
   "logout")
@@ -361,6 +362,7 @@
           (not-found {:status 404})
           )
         wrap-json-params
+        wrap-params
         )
   :access-control-allow-origin [#".*"]
   :access-control-allow-methods [:get :put :post :delete])

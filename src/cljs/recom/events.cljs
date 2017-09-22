@@ -78,7 +78,7 @@
 (re-frame/reg-event-fx
   :save-token
   (fn [db [_ token]]
-    (.log js/console token)
+    (.log js/console (str "received:" token))
     (reset! db/token token)
     {}
     ))
@@ -86,6 +86,7 @@
   :download-private-key                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
     {:http-xhrio {:method          :get
+                  :headers { :token-auth @db/token}
                   :uri             (str "http://localhost:9094/user/" username "/private_key")
                   :timeout         8000
                   :format          (ajax/json-request-format)
@@ -105,6 +106,7 @@
   :delete-user                      ;; usage:  (dispatch [:handler-with-http])
   (fn [{:keys [db]} [_ username]]                    ;; the first param will be "world"
     {:http-xhrio {:method          :post
+                  :headers { :token-auth @db/token}
                   :uri             (str "http://localhost:9094/user/" username "/delete")
                   :params {}
                   :timeout         8000
@@ -120,7 +122,7 @@
   (fn [{:keys [db]} [_ req]]                    ;; the first param will be "world"
     {:http-xhrio {:method          :post
                   ;:with-credentials true
-                  :headers { :authorization (str "Basic " (base64-encode (str "friend" ":" "clojure")))}
+                  :headers { :token-auth @db/token}
                   :uri             (str "http://localhost:9094/" (:endpoint req))
                   :params (:params req)
                   :timeout         8000
