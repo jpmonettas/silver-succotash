@@ -2,6 +2,7 @@
   (:import java.security.SecureRandom)
   (:require [org.httpkit.server :as server]
             [org.httpkit.timer :as timer]
+            [org.httpkit.client :as http]
             [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.data.json :as json]
@@ -334,8 +335,7 @@
 (defn logout [req]
   "logout")
 
-;; TODO: on first contact we send base and then publish only differences
-;; TODO: be sure we have a POST so we dont execute on OPTIONS and then on POST
+;; TODO: move admin options to /admin context
 (def private-routes
   (routes
     (GET "/logout" req logout)
@@ -353,9 +353,49 @@
     )
   )
 
+
+;; Form params
+;(let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
+;      {:keys [status error]} @(http/post "http://host.com/path1" options)]
+;  (if error
+;    (println "Failed, exception is " error)
+;    (println "Async HTTP POST: " status)))
+
+;; we dont have an in-memory db with user/tokens, we FWD and let the endpoint handle it
+(defn logrec [req]
+  (let [uid (get-in req [:route-params :uid])
+        token (get-in req [:headers "token-auth"])
+        uri (:path-info req)]
+    (println (str "user:" uid ))
+    (println (str "token:" token))
+    (println (str "uri:" uri))
+    ;; TODO: if method POST GET
+    (let [{:keys [status headers body error] :as resp} @(http/get (str "http://192.168.1.104/api/v1" uri))]
+      (if error
+        {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
+        resp))
+    )
+
+  )
+(app {:request-method :get
+      :uri "/proxy/algo/network"
+      ;:headers {
+      ;          "token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"
+      ;          }
+      })
+
+(def proxy-routes
+  (routes
+    (context "/proxy/:uid" []
+      (GET "*" req logrec)
+      (POST "*" req logrec))
+      )
+    )
+
 (def app
   (wrap-cors
     (-> (routes
+          proxy-routes
           public-routes
           (-> private-routes
               token-auth-mid)
@@ -380,6 +420,6 @@
         :headers {"token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"}})
 
 
-
+;; TODO: add ssl or use nginx + ssl
 (def serv (server/run-server #'app {:port 9094}))
 ;(serv)
