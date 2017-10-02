@@ -355,35 +355,52 @@
 
 
 ;; Form params
-;(let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
-;      {:keys [status error]} @(http/post "http://host.com/path1" options)]
-;  (if error
-;    (println "Failed, exception is " error)
-;    (println "Async HTTP POST: " status)))
+(let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
+      {:keys [status error]} @(http/post "http://host.com/path1" options)]
+  (if error
+    (println "Failed, exception is " error)
+    (println "Async HTTP POST: " status)))
 
 ;; we dont have an in-memory db with user/tokens, we FWD and let the endpoint handle it
+;; TODO: consider adding an API converter to handle different API versions
+;; TODO: use @users to do user->port conversion to save resources (instead of calling (port uid) each time
+;; TODO: check if port is active to avoid hang time talking to a disconnected endpoint
+@users
 (defn logrec [req]
   (let [uid (get-in req [:route-params :uid])
+        port (port uid)
         token (get-in req [:headers "token-auth"])
-        uri (:path-info req)]
+        uri (:path-info req)
+        method (:request-method req)]
     (println (str "user:" uid ))
+    (println method)
+    ;(println (str "port:" port ))
     (println (str "token:" token))
-    (println (str "uri:" uri))
+    ;(println (str "uri:" uri))
     ;; TODO: if method POST GET
-    (let [{:keys [status headers body error] :as resp} @(http/get (str "http://192.168.1.104/api/v1" uri))]
-      (if error
-        {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
-        resp))
+    ;; TODO: use a cleaner way instead of deconstructing and constructing
+    (if (= method :get)
+      (let [{:keys [status headers body error] :as resp} @(http/get (str "http://localhost:" port "/api/v1" uri))]
+        (if error
+          {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
+          resp))
+      (let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
+            {:keys [status error]} @(http/post (str "http://localhost:" port "/api/v1" uri) options)]
+        (if error
+          (println "Failed, exception is " error)
+          (println "Async HTTP POST: " status)))
+      )
+
     )
 
   )
+
 (app {:request-method :get
-      :uri "/proxy/algo/network"
+      :uri "/proxy/bh247_xcuhgzvr/network"
       ;:headers {
       ;          "token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"
       ;          }
       })
-
 (def proxy-routes
   (routes
     (context "/proxy/:uid" []
@@ -407,6 +424,7 @@
   :access-control-allow-origin [#".*"]
   :access-control-allow-methods [:get :put :post :delete])
   )
+
 (app {:request-method :get
       :uri "/"})
 ;(app {:request-method :post
