@@ -153,6 +153,7 @@
 ;; TODO: use transit instead of json??
 ;; TODO: use a smart diff function and send! each N if theres changes or each M (M>N)
 ;; TODO: each M we send a full "frame" to let missing clients resync
+;; TODO: add a thread to refresh atom if needed, specially open_ports
 (defn mydiff [old new]
   (let [diff  (data/diff old new)]
     (if (or (first diff) (second diff))
@@ -353,44 +354,33 @@
     )
   )
 
-
-;; Form params
-(let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
-      {:keys [status error]} @(http/post "http://host.com/path1" options)]
-  (if error
-    (println "Failed, exception is " error)
-    (println "Async HTTP POST: " status)))
-
 ;; we dont have an in-memory db with user/tokens, we FWD and let the endpoint handle it
 ;; TODO: consider adding an API converter to handle different API versions
-;; TODO: use @users to do user->port conversion to save resources (instead of calling (port uid) each time
-;; TODO: check if port is active to avoid hang time talking to a disconnected endpoint
-@users
 (defn logrec [req]
   (let [uid (get-in req [:route-params :uid])
-        port (port uid)
+        conn (first (filter #(= (:user %) uid) @users))
+        port (:port conn)
         token (get-in req [:headers "token-auth"])
         uri (:path-info req)
         method (:request-method req)]
     (println (str "user:" uid ))
-    (println method)
-    ;(println (str "port:" port ))
     (println (str "token:" token))
     ;(println (str "uri:" uri))
-    ;; TODO: if method POST GET
     ;; TODO: use a cleaner way instead of deconstructing and constructing
-    (if (= method :get)
-      (let [{:keys [status headers body error] :as resp} @(http/get (str "http://localhost:" port "/api/v1" uri))]
-        (if error
-          {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
-          resp))
-      (let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
-            {:keys [status error]} @(http/post (str "http://localhost:" port "/api/v1" uri) options)]
-        (if error
-          (println "Failed, exception is " error)
-          (println "Async HTTP POST: " status)))
+    (if (:active conn)
+      (if (= method :get)
+        (let [{:keys [status headers body error] :as resp} @(http/get (str "http://localhost:" port "/api/v1" uri))]
+          (if error
+            {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
+            resp))
+        (let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
+              {:keys [status error]} @(http/post (str "http://localhost:" port "/api/v1" uri) options)]
+          (if error
+            (println "Failed, exception is " error)
+            (println "Async HTTP POST: " status)))
+        )
+      {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
       )
-
     )
 
   )
