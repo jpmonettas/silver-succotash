@@ -365,32 +365,45 @@
         method (:request-method req)]
     (println (str "user:" uid ))
     (println (str "token:" token))
-    ;(println (str "uri:" uri))
+    (println req)
     ;; TODO: use a cleaner way instead of deconstructing and constructing
     (if (:active conn)
-      (if (= method :get)
-        (let [{:keys [status headers body error] :as resp} @(http/get (str "http://localhost:" port "/api/v1" uri))]
-          (if error
-            {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
-            resp))
-        (let [options {:form-params {:name "http-kit" :features ["async" "client" "server"]}}
-              {:keys [status error]} @(http/post (str "http://localhost:" port "/api/v1" uri) options)]
-          (if error
-            (println "Failed, exception is " error)
-            (println "Async HTTP POST: " status)))
-        )
+      (let [{:keys [status headers body error] :as resp} @(http/request {:url (str "http://localhost:" port "/api/v1" uri)
+                                                                         :method method
+                                                                         ;:content-type (:content-type req)
+                                                                         :query-params (:query-params req) ;"Nested" query parameters are also supported
+                                                                         ;:form-params (:form-params req); just like query-params, except sent in the body
+                                                                         :body (:body req) ; use this for content-type json
+                                                                         :headers {"token-auth" token
+                                                                                   "Content-Type" "application/json"
+                                                                                   }
+                                                                         }
+                                                                        )]
+        (if error
+          {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
+          resp))
+
+
       {:status 404} ;; TODO: make a 403 on prod to avoid leaking info about the endpoint
       )
     )
-
   )
 
 (app {:request-method :get
       :uri "/proxy/bh247_xcuhgzvr/network"
-      ;:headers {
-      ;          "token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"
-      ;          }
+      :headers {
+                "token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"
+                }
       })
+
+(app {:request-method :post
+      :uri "/proxy/bh247_xcuhgzvr/device/1/execute/off"
+      :body  (json/write-str {"keep_polling" 40})
+      :headers {
+                "token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"
+                }
+      })
+
 (def proxy-routes
   (routes
     (context "/proxy/:uid" []
