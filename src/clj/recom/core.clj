@@ -306,6 +306,7 @@
 
 
 ;; TODO: use :expires instead of timestamp
+;; TODO: we should use bcrypt(pass) on the client side
 (defn login [creds]
   (println "login")
   (let [user (:user creds)
@@ -403,7 +404,23 @@
                 "token-auth" "04a01a9e2490d7feb2935f10a212369f0183d18aa806fde084b498ec3b0dba85"
                 }
       })
-
+(def user-token (:token (json/read-json (:body (app {:request-method :post
+                             :uri "/proxy/bh247_xcuhgzvr/auth/login"
+                             :body  (json/write-str {:user "admin" :pass "pass"})
+                             }))
+                true)))
+(app {:request-method :post
+      :uri "/proxy/bh247_xcuhgzvr/auth/test"
+      :headers {
+                "token-auth" user-token
+                }
+      })
+(app {:request-method :post
+      :uri "/proxy/bh247_xcuhgzvr/auth/logout"
+      :headers {
+                "token-auth" user-token
+                }
+      })
 (def proxy-routes
   (routes
     (context "/proxy/:uid" []
