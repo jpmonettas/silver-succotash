@@ -15,7 +15,8 @@
                  [ring-cors "0.1.11"]
                  [ring/ring-json "0.4.0"]
                  [noencore "0.3.3"]
-                 [hiccup "1.0.5"]]
+                 [hiccup "1.0.5"]
+                 [org.clojure/tools.nrepl "0.2.12"]]
 
   :plugins [[lein-cljsbuild "1.1.4"]]
 
@@ -23,16 +24,26 @@
 
   :source-paths ["src/clj"]
 
+  :main ^:skip-aot recom.core
+
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
 
+  :aliases {"release" ["do"
+                       ["clean"]
+                       ["test"]
+                       ["cljsbuild" "once" "min"]
+                       ["uberjar"]]}
+  :auto-clean false
+  
   :figwheel {:css-dirs ["resources/public/css"]}
 
   :profiles
   {:dev
    {:dependencies [[binaryage/devtools "0.8.2"]]
 
-    :plugins      [[lein-figwheel "0.5.9"]]
-    }}
+    :plugins      [[lein-figwheel "0.5.9"]]}
+   :uberjar {:aot :all}
+   :test {:source-paths ["src/clj" "test/clj"]}}
 
   :cljsbuild
   {:builds
@@ -52,11 +63,12 @@
      :source-paths ["src/cljs"]
      :compiler     {:main            recom.core
                     :output-to       "resources/public/js/compiled/app.js"
-                    :optimizations   :advanced
+                    :optimizations   :simple
                     :closure-defines {goog.DEBUG false}
                     :pretty-print    false}}
 
 
     ]}
+  
 
   )

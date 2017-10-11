@@ -18,12 +18,9 @@ Wait a bit, then browse to [http://localhost:3449](http://localhost:3449).
 
 ## Production Build
 
-
-To compile clojurescript to javascript:
-
 ```
-lein clean
-lein cljsbuild once min
+lein release
+java -jar recom-0.1.0-SNAPSHOT-standalone.jar
 ```
 ## sudoers
 
